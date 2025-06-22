@@ -5,6 +5,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -34,47 +35,8 @@ const monthKeys = [
 ];
 const quarters = ["I кв.", "II кв.", "III кв.", "IV кв."];
 
-// ──────────── Демо‑данные ────────────
-const initialData = [
-  {
-    item: "ИТ‑Инфраструктура",
-    works: [
-      {
-        id: 1,
-        name: "Апгрейд серверов",
-        accruals: { Янв: 1200, Мар: 800 },
-        payments: { Фев: 2000 },
-        actualAccruals: {},
-        actualPayments: {},
-        justification: "Замена устаревших серверов",
-        comment: "Поставщик Dell",
-        materials: [],
-      },
-    ],
-  },
-  {
-    item: "Маркетинг",
-    works: [
-      {
-        id: 2,
-        name: "Кампания A",
-        accruals: { Май: 1000 },
-        payments: { Июл: 1000 },
-        actualAccruals: {},
-        actualPayments: {},
-        justification: "Летняя распродажа",
-        comment: "Google Ads + SMM",
-        materials: [{ name: "brief.pdf" }],
-      },
-    ],
-  },
-];
 
 // ──────────── Вспомогательные функции ────────────
-const formatCell = (acc, pay) => {
-  if (!acc && !pay) return "";
-  return [acc ? `Н: ${acc}` : null, pay ? `О: ${pay}` : null].filter(Boolean).join(" / ");
-};
 
 const objToRows = (plan, fact = {}) =>
   Object.entries(plan).map(([m, a]) => ({
@@ -99,12 +61,63 @@ const arrToFact = (rows) =>
 // ──────────── Компонент ────────────
 const BudgetTableDemo = () => {
   // table state
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState([]);
+
+  // переключатель "детально / только итоги"
+  const [showDetails, setShowDetails] = useState(true);
+
+  // флажки отображения Н и О
+  const [showAccruals, setShowAccruals] = useState(true);
+  const [showPayments, setShowPayments] = useState(true);
+  // выбранные статьи для отображения (id)
+  const [selectedArticles, setSelectedArticles] = useState([]);
+  // флажки поквартального отображения (I, II, III, IV)
+  // true → показывать квартал (и соответствующие месяцы) в таблице
+  const [showQuarterTotals, setShowQuarterTotals] = useState([true, true, true, true]);
+
+  // какие месяцы показывать в таблице согласно выбранным кварталам
+  const visibleMonths = monthKeys.filter(
+    (_, idx) => showQuarterTotals[Math.floor(idx / 3)]
+  );
+
+  // формат ячеек с учётом флажков
+  const renderCell = (acc, pay) => {
+    const accVal = showAccruals ? acc : undefined;
+    const payVal = showPayments ? pay : undefined;
+    if (!accVal && !payVal) return "";
+    return [
+      accVal ? `Н: ${accVal}` : null,
+      payVal ? `О: ${payVal}` : null,
+    ]
+      .filter(Boolean)
+      .join(" / ");
+  };
+
+  // формат для итоговых ячеек «Оплата / Начисление» в две строки
+  const formatTotalLines = (acc, pay) => {
+    const lines = [];
+    if (pay !== undefined && pay !== 0 && showPayments) {
+      lines.push(`Оплата: ${pay.toLocaleString("ru-RU")} руб`);
+    }
+    if (acc !== undefined && acc !== 0 && showAccruals) {
+      lines.push(`Начисление: ${acc.toLocaleString("ru-RU")} руб`);
+    }
+    return lines.join("\n");
+  };
 
   // при монтировании тянем данные с бэкенда
   useEffect(() => {
-    axios.get(API).then(({ data }) => setData(data));
+    axios.get(API).then(({ data }) => {
+      setData(data);
+      setSelectedArticles(data.map((it) => it.id));  // выбрать все по умолчанию
+    });
   }, []);
+  // переключение выбора статьи
+  const toggleArticle = (id) => {
+    setSelectedArticles((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
 
   // dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -164,41 +177,147 @@ const BudgetTableDemo = () => {
   };
 
   // save
-  const handleSave = () => {
-    setData((prev) => {
-      const clone = [...prev];
-      const { articleIdx, workIdx } = selected;
+  const handleSave = async () => {
+    const { articleIdx, workIdx } = selected;
+    const article = data[articleIdx];
 
-      const payload = {
-        id: workIdx === null ? Date.now() : clone[articleIdx].works[workIdx].id,
-        name: workName || "Работа",
-        accruals: arrToPlan(accrualRows),
-        payments: arrToPlan(paymentRows),
-        actualAccruals: arrToFact(accrualRows),
-        actualPayments: arrToFact(paymentRows),
-        justification,
-        comment,
-        materials,
-      };
+    const payload = {
+      id: workIdx === null ? undefined : article.works[workIdx].id,
+      item: article.id, // backend needs parent article id
+      name: workName || "Работа",
+      accruals: arrToPlan(accrualRows),
+      payments: arrToPlan(paymentRows),
+      actualAccruals: arrToFact(accrualRows),
+      actualPayments: arrToFact(paymentRows),
+      justification,
+      comment,
+      materials,
+    };
+
+    try {
+      let response;
       if (workIdx === null) {
-        // новая работа
-        clone[articleIdx].works.push(payload);
-        axios.post("http://127.0.0.1:8000/api/works/", payload);
+        response = await axios.post("http://127.0.0.1:8000/api/works/", payload);
       } else {
-        // редактирование существующей
-        clone[articleIdx].works[workIdx] = payload;
-        axios.put(`http://127.0.0.1:8000/api/works/${payload.id}/`, payload);
+        response = await axios.put(
+          `http://127.0.0.1:8000/api/works/${payload.id}/`,
+          payload
+        );
       }
-      return clone;
+
+      // use data returned from backend to keep ids in sync
+      const savedWork = response.data;
+
+      setData((prev) => {
+        const clone = structuredClone(prev);
+        if (workIdx === null) {
+          clone[articleIdx].works.push(savedWork);
+        } else {
+          clone[articleIdx].works[workIdx] = savedWork;
+        }
+        return clone;
+      });
+
+      setDialogOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Не удалось сохранить работу. Проверьте данные и повторите.");
+    }
+  };
+
+  // суммирование по статье: месяцы и кварталы (отдельно Н и О)
+  const calcTotals = (article) => {
+    const monthTotals = {};
+    const quarterTotals = [
+      { acc: 0, pay: 0 },
+      { acc: 0, pay: 0 },
+      { acc: 0, pay: 0 },
+      { acc: 0, pay: 0 },
+    ];
+
+    monthKeys.forEach((m, idx) => {
+      let acc = 0;
+      let pay = 0;
+      article.works.forEach((w) => {
+        acc += w.accruals[m] || 0;
+        pay += w.payments[m] || 0;
+      });
+      monthTotals[m] = { acc, pay };
+
+      const qIdx = Math.floor(idx / 3);
+      quarterTotals[qIdx].acc += acc;
+      quarterTotals[qIdx].pay += pay;
     });
 
-    setDialogOpen(false);
+    return { monthTotals, quarterTotals };
   };
 
   // ──────────── Render ────────────
   return (
-    <div className="p-4 overflow-auto">
-      <h1 className="text-2xl font-bold mb-4">Бюджет — демо</h1>
+    <div className="flex h-full w-full overflow-hidden">
+      {/* sidebar */}
+      <aside className="w-44 bg-gray-50 border-r p-3 flex-shrink-0 overflow-auto max-h-screen">
+        <h2 className="font-semibold mb-3">Статьи</h2>
+        <div className="space-y-2 text-sm">
+          {data.map((art) => (
+            <label key={art.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={selectedArticles.includes(art.id)}
+                onChange={() => toggleArticle(art.id)}
+              />
+              {art.name}
+            </label>
+          ))}
+        </div>
+      </aside>
+
+      {/* main content */}
+      <div className="flex-1 p-4 overflow-auto">
+        <h1 className="text-2xl font-bold mb-4">Бюджет — демо</h1>
+
+      <Button
+        variant="secondary"
+        size="sm"
+        className="mb-4"
+        onClick={() => setShowDetails((p) => !p)}
+      >
+        {showDetails ? "Скрыть работы (только итоги)" : "Показать работы детально"}
+      </Button>
+
+      <div className="mb-4 flex items-center gap-4">
+        <label className="flex items-center gap-1 text-sm">
+          <input
+            type="checkbox"
+            checked={showAccruals}
+            onChange={(e) => setShowAccruals(e.target.checked)}
+          />
+          Начисления
+        </label>
+        <label className="flex items-center gap-1 text-sm">
+          <input
+            type="checkbox"
+            checked={showPayments}
+            onChange={(e) => setShowPayments(e.target.checked)}
+          />
+          Оплаты
+        </label>
+        <span className="text-sm">Кварталы:</span>
+        {quarters.map((q, idx) => (
+          <label key={q} className="flex items-center gap-1 text-sm">
+            <input
+              type="checkbox"
+              checked={showQuarterTotals[idx]}
+              onChange={(e) => {
+                const next = [...showQuarterTotals];
+                next[idx] = e.target.checked;
+                setShowQuarterTotals(next);
+              }}
+            />
+            {q}
+          </label>
+        ))}
+      </div>
 
       {/* ---------- TABLE ---------- */}
       <table className="w-full table-auto border-collapse text-sm">
@@ -206,14 +325,16 @@ const BudgetTableDemo = () => {
           <tr className="bg-gray-100 text-center">
             <th rowSpan={2} className="border p-2">Статья</th>
             <th rowSpan={2} className="border p-2">Работа</th>
-            {quarters.map((q) => (
-              <th key={q} colSpan={3} className="border p-2">
-                {q}
-              </th>
-            ))}
+            {quarters.map((q, i) =>
+              showQuarterTotals[i] ? (
+                <th key={q} colSpan={3} className="border p-2">
+                  {q}
+                </th>
+              ) : null
+            )}
           </tr>
           <tr className="bg-gray-50 text-center">
-            {monthKeys.map((m) => (
+            {visibleMonths.map((m) => (
               <th key={m} className="border p-2 w-20">
                 {m}
               </th>
@@ -221,50 +342,112 @@ const BudgetTableDemo = () => {
           </tr>
         </thead>
         <tbody>
-          {data.map((article, aIdx) => (
-            <React.Fragment key={`${article.item}-${aIdx}`}>
-              {article.works.map((work, wIdx) => (
-                <tr
-                  key={work.id}
-                  className="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => openDialog(aIdx, wIdx)}
-                >
-                  {wIdx === 0 && (
-                    <td
-                      rowSpan={article.works.length + 1}
-                      className="border p-2 font-semibold bg-gray-100 align-top"
+          {data
+            .filter((a) => selectedArticles.includes(a.id))
+            .map((article, aIdx) => {
+            const { monthTotals, quarterTotals } = calcTotals(article);
+
+            return (
+              <React.Fragment key={`${article.name}-${aIdx}`}>
+                {showDetails &&
+                  article.works.map((work, wIdx) => (
+                    <tr
+                      key={work.id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => openDialog(aIdx, wIdx)}
                     >
-                      {article.item}
+                      {wIdx === 0 && (
+                        <td
+                          rowSpan={article.works.length + 1}
+                          className="border p-2 font-semibold bg-gray-100 align-top"
+                        >
+                          {article.name}
+                        </td>
+                      )}
+                      <td className="border p-2 bg-white flex items-center gap-1">
+                        {work.name}
+                        {work.materials?.length > 0 && (
+                          <span className="inline-flex items-center text-xs text-gray-500">
+                            <Paperclip className="w-3 h-3 mr-0.5" />
+                            {work.materials.length}
+                          </span>
+                        )}
+                      </td>
+                      {visibleMonths.map((m) => (
+                        <td key={m} className="border p-2 text-right">
+                          {renderCell(work.accruals[m], work.payments[m])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+
+                {/* итоговая строка по статье */}
+                <tr key={`totals-${article.name}`}>
+                  {!showDetails && (
+                    <td className="border p-2 font-semibold bg-teal-50">
+                      {article.name}
                     </td>
                   )}
-                  <td className="border p-2 bg-white flex items-center gap-1">
-                    {work.name}
-                    {work.materials?.length > 0 && (
-                      <span className="inline-flex items-center text-xs text-gray-500">
-                        <Paperclip className="w-3 h-3 mr-0.5" />
-                        {work.materials.length}
-                      </span>
-                    )}
+                  <td className="border p-2 bg-teal-50 text-center font-medium">
+                    Итого
                   </td>
-                  {monthKeys.map((m) => (
-                    <td key={m} className="border p-2 text-right">
-                      {formatCell(work.accruals[m], work.payments[m])}
+                  {visibleMonths.map((m) => (
+                    <td
+                      key={m}
+                      className="border p-2 bg-teal-50 font-medium text-center whitespace-pre-line"
+                    >
+                      {formatTotalLines(monthTotals[m].acc, monthTotals[m].pay)}
                     </td>
                   ))}
                 </tr>
-              ))}
-              <tr key={`add-${aIdx}`}>
-                <td
-                  colSpan={monthKeys.length + 1}
-                  className="border p-2 bg-gray-50 text-center"
-                >
-                  <Button variant="outline" onClick={() => openDialog(aIdx)}>
-                    + Добавить работу
-                  </Button>
-                </td>
-              </tr>
-            </React.Fragment>
-          ))}
+
+                {/* строка по кварталам */}
+                {showQuarterTotals.some(Boolean) && (
+                  <tr key={`qtotals-${article.name}`}>
+                    <td className="border p-2 bg-emerald-50" />
+                    <td className="border p-2 bg-emerald-50 font-medium">
+                      Квартальный итог
+                    </td>
+                    {quarterTotals.map((qt, qIdx) => (
+                      <td
+                        key={qIdx}
+                        colSpan={3}
+                        className="border p-2 bg-emerald-50 font-medium text-center whitespace-pre-line"
+                      >
+                        {showQuarterTotals[qIdx] ? formatTotalLines(qt.acc, qt.pay) : ""}
+                      </td>
+                    ))}
+                  </tr>
+                )}
+
+                {/* кнопка добавить работу (если показывают детали) */}
+                {showDetails && (
+                  <tr key={`add-${article.name}`}>
+                    {article.works.length === 0 && (
+                      <td className="border p-2 font-semibold bg-gray-100 align-top">
+                        {article.name}
+                      </td>
+                    )}
+                    <td
+                      colSpan={
+                        article.works.length === 0
+                          ? visibleMonths.length + 1          // Статья + Работа + months (название ячейка присутствует)
+                          : visibleMonths.length + 2          // Работа + months, но учесть скрытую «Статья» колонку
+                      }
+                      className="border p-2 bg-gray-50 text-center"
+                    >
+                      <Button
+                        variant="outline"
+                        onClick={() => openDialog(aIdx)}
+                      >
+                        + Добавить работу
+                      </Button>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            );
+          })}
         </tbody>
       </table>
 
@@ -276,6 +459,9 @@ const BudgetTableDemo = () => {
               <DialogTitle>
                 {selected?.workIdx === null ? "Новая работа" : "Редактирование работы"}
               </DialogTitle>
+              <DialogDescription>
+                Введите параметры работы, прикрепите материалы и укажите план/факт.
+              </DialogDescription>
             </DialogHeader>
 
             {/* Dialog body */}
@@ -451,6 +637,7 @@ const BudgetTableDemo = () => {
           </DialogContent>
         </Dialog>
       )}
+      </div>
     </div>
   );
 };

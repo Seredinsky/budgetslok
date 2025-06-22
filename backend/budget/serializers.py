@@ -7,12 +7,17 @@ class MaterialSerializer(serializers.ModelSerializer):
         fields = ("id", "file")
 
 class WorkSerializer(serializers.ModelSerializer):
+    item = serializers.PrimaryKeyRelatedField(
+        queryset=BudgetItem.objects.all(),
+        write_only=True
+    )
     materials = MaterialSerializer(many=True, read_only=True)
 
     class Meta:
         model = Work
         fields = (
-            "id", "name", "justification", "comment",
+            "id", "item",
+            "name", "justification", "comment",
             "accruals", "payments", "actual_accruals", "actual_payments",
             "materials",
         )

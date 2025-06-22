@@ -4,6 +4,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* гарантируем 100 % высоту для HTML-цепочки */
+html,
+body,
+#root {
+  height: 100%;
+}
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
