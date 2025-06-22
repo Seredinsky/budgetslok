@@ -15,5 +15,7 @@ class BudgetItemAdmin(admin.ModelAdmin):
 
 @admin.register(Work)
 class WorkAdmin(admin.ModelAdmin):
-    list_display = ("name", "item")
+    list_display = ("name", "item", "year", "responsible")
+    list_filter  = ("year",)
+    search_fields = ("name", "responsible")
     inlines = [MaterialInline]

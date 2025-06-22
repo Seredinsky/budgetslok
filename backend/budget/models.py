@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 class BudgetItem(models.Model):
     """Статья бюджета (ИТ-Инфраструктура, Маркетинг …)"""
@@ -21,6 +22,13 @@ class Work(models.Model):
     payments = models.JSONField(default=dict)         # план О
     actual_accruals = models.JSONField(default=dict)  # факт Н
     actual_payments = models.JSONField(default=dict)  # факт О
+    year = models.PositiveSmallIntegerField(
+        default=timezone.now().year,
+        db_index=True
+    )
+    responsible = models.CharField(
+        "Ответственный (ФИО)", max_length=120, blank=True
+    )
 
     def __str__(self):
         return self.name

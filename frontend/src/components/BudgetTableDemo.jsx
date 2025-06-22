@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2, Paperclip, X } from "lucide-react";
 import axios from "axios";
+import clsx from "clsx";
 
 const API = "http://127.0.0.1:8000/api/items/";
 
@@ -66,11 +67,21 @@ const BudgetTableDemo = () => {
   // переключатель "детально / только итоги"
   const [showDetails, setShowDetails] = useState(true);
 
-  // флажки отображения Н и О
-  const [showAccruals, setShowAccruals] = useState(true);
-  const [showPayments, setShowPayments] = useState(true);
+  const [mode, setMode] = useState("both"); // "plan" | "fact" | "both"
+  // отображать начисления, оплаты или оба
+  const [flowMode, setFlowMode] = useState("both"); // "acc" | "pay" | "both"
+  const showAccruals = flowMode === "acc" || flowMode === "both";
+  const showPayments = flowMode === "pay" || flowMode === "both";
   // выбранные статьи для отображения (id)
   const [selectedArticles, setSelectedArticles] = useState([]);
+
+  // фильтры года и ответственного
+  const [yearFilter, setYearFilter] = useState("all");
+  const [respFilter, setRespFilter] = useState("all");
+  // статья, в которую добавляется новая работа
+  const [newWorkArticleId, setNewWorkArticleId] = useState(null);
+  // sidebar hamburger
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // флажки поквартального отображения (I, II, III, IV)
   // true → показывать квартал (и соответствующие месяцы) в таблице
   const [showQuarterTotals, setShowQuarterTotals] = useState([true, true, true, true]);
@@ -80,29 +91,155 @@ const BudgetTableDemo = () => {
     (_, idx) => showQuarterTotals[Math.floor(idx / 3)]
   );
 
-  // формат ячеек с учётом флажков
-  const renderCell = (acc, pay) => {
-    const accVal = showAccruals ? acc : undefined;
-    const payVal = showPayments ? pay : undefined;
-    if (!accVal && !payVal) return "";
-    return [
-      accVal ? `Н: ${accVal}` : null,
-      payVal ? `О: ${payVal}` : null,
-    ]
-      .filter(Boolean)
+  // суммарный бюджет по выбранным фильтрам
+  const globalTotals = useMemo(() => {
+    let plan = 0;
+    let fact = 0;
+
+    data.forEach((article) => {
+      if (!selectedArticles.includes(article.id)) return;
+
+      article.works.forEach((w) => {
+        if (
+          (yearFilter !== "all" && String(w.year) !== yearFilter) ||
+          (respFilter !== "all" && w.responsible !== respFilter)
+        ) {
+          return;
+        }
+
+        Object.entries(w.accruals || {}).forEach(([m, v]) => {
+          if (visibleMonths.includes(m)) plan += v;
+        });
+        Object.entries(w.payments || {}).forEach(([m, v]) => {
+          if (visibleMonths.includes(m)) plan += v;
+        });
+        Object.entries(w.actual_accruals || {}).forEach(([m, v]) => {
+          if (visibleMonths.includes(m)) fact += v;
+        });
+        Object.entries(w.actual_payments || {}).forEach(([m, v]) => {
+          if (visibleMonths.includes(m)) fact += v;
+        });
+      });
+    });
+
+    return { plan, fact };
+  }, [data, selectedArticles, yearFilter, respFilter, visibleMonths]);
+
+  // для отображения активных фильтров (кроме статей)
+  const activeFilterChips = useMemo(() => {
+    const chips = [];
+
+    // план/факт режим
+    if (mode !== "both") chips.push(mode === "plan" ? "Только план" : "Только факт");
+
+    // начисления/оплаты режим
+    if (flowMode !== "both")
+      chips.push(flowMode === "acc" ? "Только начисления" : "Только оплаты");
+
+    // год
+    if (yearFilter !== "all") chips.push(`Год: ${yearFilter}`);
+
+    // ответственный
+    if (respFilter !== "all") chips.push(`Ответственный: ${respFilter}`);
+
+    // кварталы
+    if (!showQuarterTotals.every(Boolean)) {
+      const enabled = quarters
+        .filter((_, idx) => showQuarterTotals[idx])
+        .join(", ");
+      chips.push(`Кварталы: ${enabled}`);
+    }
+
+    return chips;
+  }, [mode, flowMode, yearFilter, respFilter, showQuarterTotals]);
+
+  const allYears = Array.from(
+    new Set(data.flatMap((a) => a.works.map((w) => w.year)))
+  ).sort();
+
+  const allResponsibles = Array.from(
+    new Set(
+      data.flatMap((a) => a.works.map((w) => w.responsible).filter(Boolean))
+    )
+  ).sort();
+
+  // вывод значения с учётом флагов План/Факт и Н/О
+  const renderCell = (planAcc = 0, planPay = 0, factAcc = 0, factPay = 0) => {
+    const showPlan = mode === "plan" || mode === "both";
+    const showFact = mode === "fact" || mode === "both";
+
+    // collect values according to flowMode
+    const planVals = [];
+    const factVals = [];
+
+    if (showPlan) {
+      if (showAccruals && planAcc) planVals.push(planAcc);
+      if (showPayments && planPay) planVals.push(planPay);
+    }
+    if (showFact) {
+      if (showAccruals && factAcc) factVals.push(factAcc);
+      if (showPayments && factPay) factVals.push(factPay);
+    }
+
+    // Build main line (numbers separated by /)
+    const mainNums = [...planVals, ...factVals]
+      .map((n) => n.toLocaleString("ru-RU"))
       .join(" / ");
+
+    // Percentage only in both‑mode and when plan total > 0
+    let percentLine = null;
+    if (mode === "both") {
+      const planSum = planVals.reduce((s, v) => s + v, 0);
+      const factSum = factVals.reduce((s, v) => s + v, 0);
+      if (planSum > 0) {
+        const pct = ((factSum / planSum) * 100).toFixed(0);
+        percentLine = `${pct}%`;
+      }
+    }
+
+    if (!mainNums) return "";
+
+    return (
+      <div className="flex flex-col items-end leading-tight">
+        <span>{mainNums}</span>
+        {percentLine && (
+          <span className="text-xs text-gray-500">{percentLine}</span>
+        )}
+      </div>
+    );
   };
 
-  // формат для итоговых ячеек «Оплата / Начисление» в две строки
-  const formatTotalLines = (acc, pay) => {
-    const lines = [];
-    if (pay !== undefined && pay !== 0 && showPayments) {
-      lines.push(`Оплата: ${pay.toLocaleString("ru-RU")} руб`);
+  // формат для итоговых ячеек без текстовых префиксов
+  const formatTotalLines = (acc, pay, fAcc = 0, fPay = 0) => {
+    const showPlan = mode === "plan" || mode === "both";
+    const showFact = mode === "fact" || mode === "both";
+
+    const planVals = [];
+    const factVals = [];
+
+    if (showPlan) {
+      if (showPayments && pay) planVals.push(pay);
+      if (showAccruals && acc) planVals.push(acc);
     }
-    if (acc !== undefined && acc !== 0 && showAccruals) {
-      lines.push(`Начисление: ${acc.toLocaleString("ru-RU")} руб`);
+    if (showFact) {
+      if (showPayments && fPay) factVals.push(fPay);
+      if (showAccruals && fAcc) factVals.push(fAcc);
     }
-    return lines.join("\n");
+
+    const mainNums = [...planVals, ...factVals]
+      .map((n) => n.toLocaleString("ru-RU"))
+      .join(" / ");
+
+    let percentLine = null;
+    if (mode === "both") {
+      const planSum = planVals.reduce((s, v) => s + v, 0);
+      const factSum = factVals.reduce((s, v) => s + v, 0);
+      if (planSum > 0) {
+        percentLine = `${((factSum / planSum) * 100).toFixed(0)}%`;
+      }
+    }
+
+    return percentLine ? `${mainNums}\n${percentLine}` : mainNums;
   };
 
   // при монтировании тянем данные с бэкенда
@@ -110,6 +247,7 @@ const BudgetTableDemo = () => {
     axios.get(API).then(({ data }) => {
       setData(data);
       setSelectedArticles(data.map((it) => it.id));  // выбрать все по умолчанию
+      if (data.length) setNewWorkArticleId(data[0].id);
     });
   }, []);
   // переключение выбора статьи
@@ -128,6 +266,11 @@ const BudgetTableDemo = () => {
   const [justification, setJustification] = useState("");
   const [comment, setComment] = useState("");
   const [materials, setMaterials] = useState([]); // [{ name }]
+  const currentYear = new Date().getFullYear();
+  const [year, setYear] = useState(currentYear);
+  const [responsible, setResponsible] = useState("");
+  // статья, к которой относится работа в диалоге
+  const [workArticleId, setWorkArticleId] = useState(null);
   const [accrualRows, setAccrualRows] = useState([]);
   const [paymentRows, setPaymentRows] = useState([]);
 
@@ -160,17 +303,24 @@ const BudgetTableDemo = () => {
       setWorkName("");
       setJustification("");
       setComment("");
+      setYear(currentYear);
+      setWorkArticleId(data[articleIdx].id);
+      setResponsible("");
       setMaterials([]);
       setAccrualRows([{ month: "", amount: "", checked: false, actual: "" }]);
       setPaymentRows([{ month: "", amount: "", checked: false, actual: "" }]);
     } else {
-      const w = data[articleIdx].works[workIdx];
+      const article = data[articleIdx];
+      const w = article.works[workIdx];
       setWorkName(w.name);
       setJustification(w.justification || "");
       setComment(w.comment || "");
+      setYear(w.year || currentYear);
+      setResponsible(w.responsible || "");
+      setWorkArticleId(article.id);
       setMaterials(w.materials || []);
-      setAccrualRows(objToRows(w.accruals, w.actualAccruals));
-      setPaymentRows(objToRows(w.payments, w.actualPayments));
+      setAccrualRows(objToRows(w.accruals, w.actual_accruals));
+      setPaymentRows(objToRows(w.payments, w.actual_payments))
     }
 
     setDialogOpen(true);
@@ -183,14 +333,16 @@ const BudgetTableDemo = () => {
 
     const payload = {
       id: workIdx === null ? undefined : article.works[workIdx].id,
-      item: article.id, // backend needs parent article id
+      item: workArticleId, // backend needs parent article id
       name: workName || "Работа",
       accruals: arrToPlan(accrualRows),
       payments: arrToPlan(paymentRows),
-      actualAccruals: arrToFact(accrualRows),
-      actualPayments: arrToFact(paymentRows),
+      actual_accruals: arrToFact(accrualRows),
+      actual_payments: arrToFact(paymentRows),
       justification,
       comment,
+      year,
+      responsible,
       materials,
     };
 
@@ -211,7 +363,10 @@ const BudgetTableDemo = () => {
       setData((prev) => {
         const clone = structuredClone(prev);
         if (workIdx === null) {
-          clone[articleIdx].works.push(savedWork);
+          const targetIdx = clone.findIndex((a) => a.id === workArticleId);
+          if (targetIdx >= 0) {
+            clone[targetIdx].works.push(savedWork);
+          }
         } else {
           clone[articleIdx].works[workIdx] = savedWork;
         }
@@ -225,28 +380,39 @@ const BudgetTableDemo = () => {
     }
   };
 
-  // суммирование по статье: месяцы и кварталы (отдельно Н и О)
+  // суммирование по статье: месяцы и кварталы (отдельно Н и О, план и факт)
   const calcTotals = (article) => {
     const monthTotals = {};
-    const quarterTotals = [
-      { acc: 0, pay: 0 },
-      { acc: 0, pay: 0 },
-      { acc: 0, pay: 0 },
-      { acc: 0, pay: 0 },
-    ];
+    const quarterTotals = Array.from({ length: 4 }, () => ({
+      acc: 0,
+      pay: 0,
+      fAcc: 0,
+      fPay: 0,
+    }));
 
-    monthKeys.forEach((m, idx) => {
+    visibleMonths.forEach((m, idx) => {
       let acc = 0;
       let pay = 0;
+      let fAcc = 0;
+      let fPay = 0;
       article.works.forEach((w) => {
-        acc += w.accruals[m] || 0;
-        pay += w.payments[m] || 0;
-      });
-      monthTotals[m] = { acc, pay };
+        const a = w.accruals || {};
+        const p = w.payments || {};
+        const fa = w.actual_accruals || {};
+        const fp = w.actual_payments || {};
 
-      const qIdx = Math.floor(idx / 3);
+        acc += a[m] || 0;
+        pay += p[m] || 0;
+        fAcc += fa[m] || 0;
+        fPay += fp[m] || 0;
+      });
+      monthTotals[m] = { acc, pay, fAcc, fPay };
+
+      const qIdx = Math.floor(monthKeys.indexOf(m) / 3);
       quarterTotals[qIdx].acc += acc;
       quarterTotals[qIdx].pay += pay;
+      quarterTotals[qIdx].fAcc += fAcc;
+      quarterTotals[qIdx].fPay += fPay;
     });
 
     return { monthTotals, quarterTotals };
@@ -254,27 +420,186 @@ const BudgetTableDemo = () => {
 
   // ──────────── Render ────────────
   return (
-    <div className="flex h-full w-full overflow-hidden">
-      {/* sidebar */}
-      <aside className="w-44 bg-gray-50 border-r p-3 flex-shrink-0 overflow-auto max-h-screen">
-        <h2 className="font-semibold mb-3">Статьи</h2>
-        <div className="space-y-2 text-sm">
-          {data.map((art) => (
-            <label key={art.id} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={selectedArticles.includes(art.id)}
-                onChange={() => toggleArticle(art.id)}
-              />
-              {art.name}
-            </label>
-          ))}
+    <div className="flex h-full w-full">
+      {/* hamburger button */}
+      <button
+        type="button"
+        className="absolute top-3 left-3 z-40 p-2 rounded border bg-white shadow-sm"
+        onClick={() => setSettingsOpen(true)}
+      >
+        <span className="sr-only">Открыть меню</span>
+        {/* simple icon */}
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M3 6h14M3 10h14M3 14h14" stroke="#333" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      </button>
+
+      {/* drawer */}
+      {settingsOpen && (
+        <div className="fixed inset-y-0 left-0 w-64 bg-gray-50 border-r shadow-lg z-50 flex flex-col p-4 overflow-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-semibold text-lg">Настройки</h2>
+            <button
+              className="p-1"
+              onClick={() => setSettingsOpen(false)}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* --- existing sidebar content moved here --- */}
+          <h3 className="font-semibold mb-3">Статьи</h3>
+          <div className="space-y-2 text-sm mb-4">
+            {data.map((art) => (
+              <label key={art.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selectedArticles.includes(art.id)}
+                  onChange={() => toggleArticle(art.id)}
+                />
+                {art.name}
+              </label>
+            ))}
+          </div>
+
+          {/* Year filter */}
+          <div className="mb-3">
+            <label className="block text-xs font-medium mb-1">Год</label>
+            <select
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="w-full border rounded text-sm p-1"
+            >
+              <option value="all">Все</option>
+              {allYears.map((y) => (
+                <option key={y} value={String(y)}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Responsible filter */}
+          <div className="mb-6">
+            <label className="block text-xs font-medium mb-1">Ответственный</label>
+            <select
+              value={respFilter}
+              onChange={(e) => setRespFilter(e.target.value)}
+              className="w-full border rounded text-sm p-1"
+            >
+              <option value="all">Все</option>
+              {allResponsibles.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Quarter toggles */}
+          <div>
+            <span className="text-sm">Кварталы:</span>
+            {quarters.map((q, idx) => (
+              <label key={q} className="flex items-center gap-1 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showQuarterTotals[idx]}
+                  onChange={(e) => {
+                    const next = [...showQuarterTotals];
+                    next[idx] = e.target.checked;
+                    setShowQuarterTotals(next);
+                  }}
+                />
+                {q}
+              </label>
+            ))}
+          </div>
         </div>
-      </aside>
+      )}
 
       {/* main content */}
-      <div className="flex-1 p-4 overflow-auto">
+      <div className="flex-1">
         <h1 className="text-2xl font-bold mb-4">Бюджет — демо</h1>
+        {/* summary card */}
+        <div className="mb-4 flex flex-wrap items-center gap-4">
+          <div className="bg-white border rounded shadow-sm p-4 flex items-center gap-6">
+            <div>
+              <div className="text-sm text-gray-500">План</div>
+              <div className="text-xl font-semibold text-blue-600">
+                {globalTotals.plan.toLocaleString("ru-RU")} ₽
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-500">Факт</div>
+              <div className="text-xl font-semibold text-emerald-600">
+                {globalTotals.fact.toLocaleString("ru-RU")} ₽
+              </div>
+            </div>
+            {(() => {
+              const pct = globalTotals.plan
+                ? Math.min(
+                    100,
+                    (globalTotals.fact / globalTotals.plan) * 100
+                  ).toFixed(0)
+                : "0";
+              return (
+                <div className="relative w-48 h-3 bg-gray-200 rounded overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 transition-all"
+                    style={{ width: `${pct}%` }}
+                  ></div>
+                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-gray-700">
+                    {pct}%
+                  </span>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* кнопка "Новая работа" создаёт работу в выбранной статье */}
+          <div className="flex items-center gap-2">
+            <Select
+              value={newWorkArticleId ? String(newWorkArticleId) : ""}
+              onValueChange={(val) => setNewWorkArticleId(Number(val))}
+            >
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Выберите статью" />
+              </SelectTrigger>
+              <SelectContent>
+                {data
+                  .filter((a) => selectedArticles.includes(a.id))
+                  .map((a) => (
+                    <SelectItem key={a.id} value={String(a.id)}>
+                      {a.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="default"
+              disabled={!newWorkArticleId}
+              onClick={() => {
+                const idx = data.findIndex((a) => a.id === newWorkArticleId);
+                if (idx >= 0) openDialog(idx);
+              }}
+            >
+              + Новая работа
+            </Button>
+          </div>
+        </div>
+        {activeFilterChips.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {activeFilterChips.map((txt, idx) => (
+              <span
+                key={idx}
+                className="inline-block bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs"
+              >
+                {txt}
+              </span>
+            ))}
+          </div>
+        )}
 
       <Button
         variant="secondary"
@@ -286,45 +611,49 @@ const BudgetTableDemo = () => {
       </Button>
 
       <div className="mb-4 flex items-center gap-4">
-        <label className="flex items-center gap-1 text-sm">
-          <input
-            type="checkbox"
-            checked={showAccruals}
-            onChange={(e) => setShowAccruals(e.target.checked)}
-          />
-          Начисления
-        </label>
-        <label className="flex items-center gap-1 text-sm">
-          <input
-            type="checkbox"
-            checked={showPayments}
-            onChange={(e) => setShowPayments(e.target.checked)}
-          />
-          Оплаты
-        </label>
-        <span className="text-sm">Кварталы:</span>
-        {quarters.map((q, idx) => (
-          <label key={q} className="flex items-center gap-1 text-sm">
-            <input
-              type="checkbox"
-              checked={showQuarterTotals[idx]}
-              onChange={(e) => {
-                const next = [...showQuarterTotals];
-                next[idx] = e.target.checked;
-                setShowQuarterTotals(next);
-              }}
-            />
-            {q}
-          </label>
-        ))}
+        <div className="inline-flex rounded overflow-hidden border">
+          {["acc", "pay", "both"].map((m) => (
+            <button
+              key={m}
+              type="button"
+              className={clsx(
+                "px-2 py-1 text-sm",
+                flowMode === m ? "bg-sky-600 text-white" : "bg-white hover:bg-sky-50"
+              )}
+              onClick={() => setFlowMode(m)}
+            >
+              {m === "acc" ? "Начисления" : m === "pay" ? "Оплаты" : "Нач.+Опл."}
+            </button>
+          ))}
+        </div>
+        <div className="inline-flex rounded overflow-hidden border">
+          {["plan", "fact", "both"].map((m) => (
+            <button
+              key={m}
+              type="button"
+              className={clsx(
+                "px-2 py-1 text-sm",
+                mode === m ? "bg-sky-600 text-white" : "bg-white hover:bg-sky-50"
+              )}
+              onClick={() => setMode(m)}
+            >
+              {m === "plan" ? "План" : m === "fact" ? "Факт" : "План+Факт"}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ---------- TABLE ---------- */}
-      <table className="w-full table-auto border-collapse text-sm">
+      <div className="overflow-x-auto">
+      <table className="min-w-full table-fixed border-collapse text-sm">
         <thead>
           <tr className="bg-gray-100 text-center">
-            <th rowSpan={2} className="border p-2">Статья</th>
-            <th rowSpan={2} className="border p-2">Работа</th>
+            <th rowSpan={2} className="border p-2 bg-gray-100">
+              Статья
+            </th>
+            <th rowSpan={2} className="border p-2 bg-gray-100">
+              Работа
+            </th>
             {quarters.map((q, i) =>
               showQuarterTotals[i] ? (
                 <th key={q} colSpan={3} className="border p-2">
@@ -335,7 +664,7 @@ const BudgetTableDemo = () => {
           </tr>
           <tr className="bg-gray-50 text-center">
             {visibleMonths.map((m) => (
-              <th key={m} className="border p-2 w-20">
+              <th key={m} className="border p-2">
                 {m}
               </th>
             ))}
@@ -343,14 +672,36 @@ const BudgetTableDemo = () => {
         </thead>
         <tbody>
           {data
-            .filter((a) => selectedArticles.includes(a.id))
+            .filter(
+              (a) =>
+                selectedArticles.includes(a.id) &&
+                a.works.some(
+                  (w) =>
+                    (yearFilter === "all" || String(w.year) === yearFilter) &&
+                    (respFilter === "all" || w.responsible === respFilter)
+                )
+            )
             .map((article, aIdx) => {
-            const { monthTotals, quarterTotals } = calcTotals(article);
+            const filteredWorks = article.works.filter(
+              (w) =>
+                (yearFilter === "all" || String(w.year) === yearFilter) &&
+                (respFilter === "all" || w.responsible === respFilter)
+            );
+            const { monthTotals, quarterTotals } = calcTotals({
+              ...article,
+              works: filteredWorks,
+            });
 
             return (
               <React.Fragment key={`${article.name}-${aIdx}`}>
                 {showDetails &&
-                  article.works.map((work, wIdx) => (
+                  article.works
+                    .filter(
+                      (w) =>
+                        (yearFilter === "all" || String(w.year) === yearFilter) &&
+                        (respFilter === "all" || w.responsible === respFilter)
+                    )
+                    .map((work, wIdx) => (
                     <tr
                       key={work.id}
                       className="hover:bg-gray-50 cursor-pointer"
@@ -358,24 +709,34 @@ const BudgetTableDemo = () => {
                     >
                       {wIdx === 0 && (
                         <td
-                          rowSpan={article.works.length + 1}
+                          rowSpan={filteredWorks.length + 1}
                           className="border p-2 font-semibold bg-gray-100 align-top"
                         >
                           {article.name}
                         </td>
                       )}
-                      <td className="border p-2 bg-white flex items-center gap-1">
-                        {work.name}
-                        {work.materials?.length > 0 && (
-                          <span className="inline-flex items-center text-xs text-gray-500">
-                            <Paperclip className="w-3 h-3 mr-0.5" />
-                            {work.materials.length}
-                          </span>
-                        )}
+                      <td className="border p-2 bg-white">
+                        <div className="flex items-center gap-1">
+                          {work.name}
+                          {work.materials?.length > 0 && (
+                            <span className="inline-flex items-center text-xs text-gray-500">
+                              <Paperclip className="w-3 h-3 mr-0.5" />
+                              {work.materials.length}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {work.year} · {work.responsible || "—"}
+                        </div>
                       </td>
                       {visibleMonths.map((m) => (
                         <td key={m} className="border p-2 text-right">
-                          {renderCell(work.accruals[m], work.payments[m])}
+                          {renderCell(
+                            (work.accruals || {})[m],
+                            (work.payments || {})[m],
+                            (work.actual_accruals || {})[m],
+                            (work.actual_payments || {})[m]
+                          )}
                         </td>
                       ))}
                     </tr>
@@ -396,7 +757,12 @@ const BudgetTableDemo = () => {
                       key={m}
                       className="border p-2 bg-teal-50 font-medium text-center whitespace-pre-line"
                     >
-                      {formatTotalLines(monthTotals[m].acc, monthTotals[m].pay)}
+                      {formatTotalLines(
+                        monthTotals[m].acc,
+                        monthTotals[m].pay,
+                        monthTotals[m].fAcc,
+                        monthTotals[m].fPay
+                      )}
                     </td>
                   ))}
                 </tr>
@@ -404,57 +770,39 @@ const BudgetTableDemo = () => {
                 {/* строка по кварталам */}
                 {showQuarterTotals.some(Boolean) && (
                   <tr key={`qtotals-${article.name}`}>
+                    {/* placeholder for sticky "Статья" column */}
                     <td className="border p-2 bg-emerald-50" />
+                    {/* label cell for row */}
                     <td className="border p-2 bg-emerald-50 font-medium">
                       Квартальный итог
                     </td>
-                    {quarterTotals.map((qt, qIdx) => (
-                      <td
-                        key={qIdx}
-                        colSpan={3}
-                        className="border p-2 bg-emerald-50 font-medium text-center whitespace-pre-line"
-                      >
-                        {showQuarterTotals[qIdx] ? formatTotalLines(qt.acc, qt.pay) : ""}
-                      </td>
-                    ))}
+                    {/* only output cells for visible quarters */}
+                    {quarterTotals.map((qt, qIdx) =>
+                      showQuarterTotals[qIdx] ? (
+                        <td
+                          key={qIdx}
+                          colSpan={3}
+                          className="border p-2 bg-emerald-50 font-medium text-center whitespace-pre-line"
+                        >
+                          {formatTotalLines(qt.acc, qt.pay, qt.fAcc, qt.fPay)}
+                        </td>
+                      ) : null
+                    )}
                   </tr>
                 )}
 
                 {/* кнопка добавить работу (если показывают детали) */}
-                {showDetails && (
-                  <tr key={`add-${article.name}`}>
-                    {article.works.length === 0 && (
-                      <td className="border p-2 font-semibold bg-gray-100 align-top">
-                        {article.name}
-                      </td>
-                    )}
-                    <td
-                      colSpan={
-                        article.works.length === 0
-                          ? visibleMonths.length + 1          // Статья + Работа + months (название ячейка присутствует)
-                          : visibleMonths.length + 2          // Работа + months, но учесть скрытую «Статья» колонку
-                      }
-                      className="border p-2 bg-gray-50 text-center"
-                    >
-                      <Button
-                        variant="outline"
-                        onClick={() => openDialog(aIdx)}
-                      >
-                        + Добавить работу
-                      </Button>
-                    </td>
-                  </tr>
-                )}
               </React.Fragment>
             );
           })}
         </tbody>
       </table>
+      </div>
 
       {/* ---------- DIALOG ---------- */}
       {dialogOpen && (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-4xl w-full">
             <DialogHeader>
               <DialogTitle>
                 {selected?.workIdx === null ? "Новая работа" : "Редактирование работы"}
@@ -466,6 +814,26 @@ const BudgetTableDemo = () => {
 
             {/* Dialog body */}
             <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+              {/* Article select */}
+              <div>
+                <label className="block text-sm mb-1 font-medium">Статья</label>
+                <Select
+                  value={workArticleId ? String(workArticleId) : ""}
+                  onValueChange={(v) => setWorkArticleId(Number(v))}
+                >
+                  <SelectTrigger className="w-60">
+                    <SelectValue placeholder="Выберите статью" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {data.map((a) => (
+                      <SelectItem key={a.id} value={String(a.id)}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Name */}
               <div>
                 <label className="block text-sm mb-1 font-medium">Название работы</label>
@@ -473,6 +841,38 @@ const BudgetTableDemo = () => {
                   value={workName}
                   onChange={(e) => setWorkName(e.target.value)}
                   placeholder="Введите название"
+                />
+              </div>
+
+              {/* Year */}
+              <div>
+                <label className="block text-sm mb-1 font-medium">Год</label>
+                <Select
+                  value={String(year)}
+                  onValueChange={(v) => setYear(Number(v))}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[year - 1, year, year + 1, year + 2].map((y) => (
+                      <SelectItem key={y} value={String(y)}>
+                        {y}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Responsible */}
+              <div>
+                <label className="block text-sm mb-1 font-medium">
+                  Ответственный (ФИО)
+                </label>
+                <Input
+                  value={responsible}
+                  onChange={(e) => setResponsible(e.target.value)}
+                  placeholder="Введите ФИО"
                 />
               </div>
 

@@ -17,8 +17,10 @@ class WorkSerializer(serializers.ModelSerializer):
         model = Work
         fields = (
             "id", "item",
+            "year", "responsible",          # ← новые
             "name", "justification", "comment",
-            "accruals", "payments", "actual_accruals", "actual_payments",
+            "accruals", "payments",
+            "actual_accruals", "actual_payments",
             "materials",
         )
 
