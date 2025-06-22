@@ -1,0 +1,25 @@
+from rest_framework import serializers
+from .models import BudgetItem, Work, Material
+
+class MaterialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Material
+        fields = ("id", "file")
+
+class WorkSerializer(serializers.ModelSerializer):
+    materials = MaterialSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Work
+        fields = (
+            "id", "name", "justification", "comment",
+            "accruals", "payments", "actual_accruals", "actual_payments",
+            "materials",
+        )
+
+class BudgetItemSerializer(serializers.ModelSerializer):
+    works = WorkSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = BudgetItem
+        fields = ("id", "name", "works")
