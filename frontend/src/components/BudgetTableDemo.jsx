@@ -64,8 +64,9 @@ const BudgetTableDemo = () => {
   // table state
   const [data, setData] = useState([]);
 
-  // переключатель "детально / только итоги"
-  const [showDetails, setShowDetails] = useState(true);
+  // какие статьи раскрыты (id)
+  const [expandedArticles, setExpandedArticles] = useState([]);
+  // переключатель "детально / только итоги" (удалено)
 
   const [mode, setMode] = useState("both"); // "plan" | "fact" | "both"
   // отображать начисления, оплаты или оба
@@ -76,10 +77,9 @@ const BudgetTableDemo = () => {
   const [selectedArticles, setSelectedArticles] = useState([]);
 
   // фильтры года и ответственного
-  const [yearFilter, setYearFilter] = useState("all");
+  const currentYear = new Date().getFullYear();
+  const [yearFilter, setYearFilter] = useState(String(currentYear));
   const [respFilter, setRespFilter] = useState("all");
-  // статья, в которую добавляется новая работа
-  const [newWorkArticleId, setNewWorkArticleId] = useState(null);
   // sidebar hamburger
   const [settingsOpen, setSettingsOpen] = useState(false);
   // флажки поквартального отображения (I, II, III, IV)
@@ -91,10 +91,12 @@ const BudgetTableDemo = () => {
     (_, idx) => showQuarterTotals[Math.floor(idx / 3)]
   );
 
-  // суммарный бюджет по выбранным фильтрам
+  // суммарный бюджет по выбранным фильтрам, раздельно для начислений и оплат
   const globalTotals = useMemo(() => {
-    let plan = 0;
-    let fact = 0;
+    let planAcc = 0,
+      planPay = 0,
+      factAcc = 0,
+      factPay = 0;
 
     data.forEach((article) => {
       if (!selectedArticles.includes(article.id)) return;
@@ -108,21 +110,24 @@ const BudgetTableDemo = () => {
         }
 
         Object.entries(w.accruals || {}).forEach(([m, v]) => {
-          if (visibleMonths.includes(m)) plan += v;
+          if (visibleMonths.includes(m)) planAcc += v;
         });
         Object.entries(w.payments || {}).forEach(([m, v]) => {
-          if (visibleMonths.includes(m)) plan += v;
+          if (visibleMonths.includes(m)) planPay += v;
         });
         Object.entries(w.actual_accruals || {}).forEach(([m, v]) => {
-          if (visibleMonths.includes(m)) fact += v;
+          if (visibleMonths.includes(m)) factAcc += v;
         });
         Object.entries(w.actual_payments || {}).forEach(([m, v]) => {
-          if (visibleMonths.includes(m)) fact += v;
+          if (visibleMonths.includes(m)) factPay += v;
         });
       });
     });
 
-    return { plan, fact };
+    return {
+      acc: { plan: planAcc, fact: factAcc },
+      pay: { plan: planPay, fact: factPay },
+    };
   }, [data, selectedArticles, yearFilter, respFilter, visibleMonths]);
 
   // для отображения активных фильтров (кроме статей)
@@ -199,11 +204,24 @@ const BudgetTableDemo = () => {
 
     if (!mainNums) return "";
 
+    // decide color for percent line
+    let pctColor = "text-gray-500";
+    if (mode === "both" && percentLine) {
+      const pctNum = Number(percentLine.replace("%", ""));
+      if (factVals.reduce((s, v) => s + v, 0) === 0) {
+        pctColor = "text-gray-500";
+      } else if (pctNum === 100) {
+        pctColor = "text-emerald-600";
+      } else {
+        pctColor = "text-yellow-600";
+      }
+    }
+
     return (
       <div className="flex flex-col items-end leading-tight">
         <span>{mainNums}</span>
         {percentLine && (
-          <span className="text-xs text-gray-500">{percentLine}</span>
+          <span className={clsx("text-xs", pctColor)}>{percentLine}</span>
         )}
       </div>
     );
@@ -230,6 +248,7 @@ const BudgetTableDemo = () => {
       .map((n) => n.toLocaleString("ru-RU"))
       .join(" / ");
 
+    // calculate percentage
     let percentLine = null;
     if (mode === "both") {
       const planSum = planVals.reduce((s, v) => s + v, 0);
@@ -239,7 +258,29 @@ const BudgetTableDemo = () => {
       }
     }
 
-    return percentLine ? `${mainNums}\n${percentLine}` : mainNums;
+    // choose color
+    let pctColor = "text-gray-500";
+    if (mode === "both" && percentLine) {
+      const pctNum = Number(percentLine.replace("%", ""));
+      if (factVals.reduce((s, v) => s + v, 0) === 0) {
+        pctColor = "text-gray-500";
+      } else if (pctNum === 100) {
+        pctColor = "text-emerald-600";
+      } else {
+        pctColor = "text-yellow-600";
+      }
+    }
+
+    if (!mainNums) return "";
+
+    return (
+      <div className="flex flex-col items-center leading-tight">
+        <span>{mainNums}</span>
+        {percentLine && (
+          <span className={clsx("text-xs", pctColor)}>{percentLine}</span>
+        )}
+      </div>
+    );
   };
 
   // при монтировании тянем данные с бэкенда
@@ -247,9 +288,15 @@ const BudgetTableDemo = () => {
     axios.get(API).then(({ data }) => {
       setData(data);
       setSelectedArticles(data.map((it) => it.id));  // выбрать все по умолчанию
-      if (data.length) setNewWorkArticleId(data[0].id);
+      setExpandedArticles(data.map((it) => it.id)); // раскрыть все по умолчанию
     });
   }, []);
+  // переключение раскрытия конкретной статьи
+  const toggleArticleExpand = (id) => {
+    setExpandedArticles((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
   // переключение выбора статьи
   const toggleArticle = (id) => {
     setSelectedArticles((prev) =>
@@ -266,7 +313,6 @@ const BudgetTableDemo = () => {
   const [justification, setJustification] = useState("");
   const [comment, setComment] = useState("");
   const [materials, setMaterials] = useState([]); // [{ name }]
-  const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const [responsible, setResponsible] = useState("");
   // статья, к которой относится работа в диалоге
@@ -378,6 +424,27 @@ const BudgetTableDemo = () => {
       console.error(err);
       alert("Не удалось сохранить работу. Проверьте данные и повторите.");
     }
+  };
+
+  // плавающая кнопка "Добавить работу"
+  const handleAddWorkFab = () => {
+    if (selectedArticles.length === 0) return;
+    const firstId = selectedArticles[0];
+    const idx = data.findIndex((a) => a.id === firstId);
+    if (idx >= 0) openDialog(idx);
+  };
+
+  // вернуть true если работа содержит хоть одно значение в выбранных visibleMonths
+  const workHasVisibleData = (w) => {
+    const allMaps = [
+      w.accruals || {},
+      w.payments || {},
+      w.actual_accruals || {},
+      w.actual_payments || {},
+    ];
+    return visibleMonths.some((m) =>
+      allMaps.some((obj) => obj[m] && obj[m] !== 0)
+    );
   };
 
   // суммирование по статье: месяцы и кварталы (отдельно Н и О, план и факт)
@@ -523,73 +590,100 @@ const BudgetTableDemo = () => {
         {/* summary card */}
         <div className="mb-4 flex flex-wrap items-center gap-4">
           <div className="bg-white border rounded shadow-sm p-4 flex items-center gap-6">
-            <div>
-              <div className="text-sm text-gray-500">План</div>
-              <div className="text-xl font-semibold text-blue-600">
-                {globalTotals.plan.toLocaleString("ru-RU")} ₽
-              </div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500">Факт</div>
-              <div className="text-xl font-semibold text-emerald-600">
-                {globalTotals.fact.toLocaleString("ru-RU")} ₽
-              </div>
-            </div>
-            {(() => {
-              const pct = globalTotals.plan
-                ? Math.min(
-                    100,
-                    (globalTotals.fact / globalTotals.plan) * 100
-                  ).toFixed(0)
-                : "0";
-              return (
-                <div className="relative w-48 h-3 bg-gray-200 rounded overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-500 transition-all"
-                    style={{ width: `${pct}%` }}
-                  ></div>
-                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-gray-700">
-                    {pct}%
+            {/* block for Accruals */}
+            {(flowMode === "acc" || flowMode === "both") && (
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-xs text-gray-500">Начисления</span>
+                <div className="flex items-end gap-2">
+                  <span className="text-lg font-semibold text-blue-600">
+                    {globalTotals.acc.plan.toLocaleString("ru-RU")}₽
+                  </span>
+                  <span className="text-lg font-semibold text-emerald-600">
+                    {globalTotals.acc.fact.toLocaleString("ru-RU")}₽
                   </span>
                 </div>
-              );
-            })()}
+                {(() => {
+                  const { plan, fact } = globalTotals.acc;
+                  const pct = plan ? Math.min(100, (fact / plan) * 100).toFixed(0) : "0";
+                  return (
+                    <div className="relative w-56 h-4 bg-gray-200 rounded overflow-hidden">
+                      <div
+                        className={clsx(
+                          "h-full transition-all",
+                          mode === "both"
+                            ? fact === 0
+                              ? "bg-gray-400"
+                              : pct === "100"
+                              ? "bg-emerald-500"
+                              : "bg-yellow-400"
+                            : "bg-emerald-500"
+                        )}
+                        style={{ width: `${pct}%` }}
+                      ></div>
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-gray-700">
+                        {pct}%
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* block for Payments */}
+            {(flowMode === "pay" || flowMode === "both") && (
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-xs text-gray-500">Оплаты</span>
+                <div className="flex items-end gap-2">
+                  <span className="text-lg font-semibold text-blue-600">
+                    {globalTotals.pay.plan.toLocaleString("ru-RU")}₽
+                  </span>
+                  <span className="text-lg font-semibold text-emerald-600">
+                    {globalTotals.pay.fact.toLocaleString("ru-RU")}₽
+                  </span>
+                </div>
+                {(() => {
+                  const { plan, fact } = globalTotals.pay;
+                  const pct = plan ? Math.min(100, (fact / plan) * 100).toFixed(0) : "0";
+                  return (
+                    <div className="relative w-56 h-4 bg-gray-200 rounded overflow-hidden">
+                      <div
+                        className={clsx(
+                          "h-full transition-all",
+                          mode === "both"
+                            ? fact === 0
+                              ? "bg-gray-400"
+                              : pct === "100"
+                              ? "bg-emerald-500"
+                              : "bg-yellow-400"
+                            : "bg-emerald-500"
+                        )}
+                        style={{ width: `${pct}%` }}
+                      ></div>
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-gray-700">
+                        {pct}%
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
 
-          {/* кнопка "Новая работа" создаёт работу в выбранной статье */}
-          <div className="flex items-center gap-2">
-            <Select
-              value={newWorkArticleId ? String(newWorkArticleId) : ""}
-              onValueChange={(val) => setNewWorkArticleId(Number(val))}
-            >
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Выберите статью" />
-              </SelectTrigger>
-              <SelectContent>
-                {data
-                  .filter((a) => selectedArticles.includes(a.id))
-                  .map((a) => (
-                    <SelectItem key={a.id} value={String(a.id)}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="default"
-              disabled={!newWorkArticleId}
-              onClick={() => {
-                const idx = data.findIndex((a) => a.id === newWorkArticleId);
-                if (idx >= 0) openDialog(idx);
-              }}
-            >
-              + Новая работа
-            </Button>
-          </div>
+          {/* кнопка "Новая работа" создаёт работу в первую выбранную статью */}
+          <Button
+            variant="default"
+            disabled={selectedArticles.length === 0}
+            onClick={() => {
+              const firstId = selectedArticles[0];
+              const idx = data.findIndex((a) => a.id === firstId);
+              if (idx >= 0) openDialog(idx);
+            }}
+          >
+            + Новая работа
+          </Button>
         </div>
         {activeFilterChips.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mt-4">
             {activeFilterChips.map((txt, idx) => (
               <span
                 key={idx}
@@ -601,14 +695,6 @@ const BudgetTableDemo = () => {
           </div>
         )}
 
-      <Button
-        variant="secondary"
-        size="sm"
-        className="mb-4"
-        onClick={() => setShowDetails((p) => !p)}
-      >
-        {showDetails ? "Скрыть работы (только итоги)" : "Показать работы детально"}
-      </Button>
 
       <div className="mb-4 flex items-center gap-4">
         <div className="inline-flex rounded overflow-hidden border">
@@ -648,7 +734,7 @@ const BudgetTableDemo = () => {
       <table className="min-w-full table-fixed border-collapse text-sm">
         <thead>
           <tr className="bg-gray-100 text-center">
-            <th rowSpan={2} className="border p-2 bg-gray-100">
+            <th rowSpan={2} className="border p-2 bg-gray-100 w-48 max-w-[12rem]">
               Статья
             </th>
             <th rowSpan={2} className="border p-2 bg-gray-100">
@@ -682,26 +768,24 @@ const BudgetTableDemo = () => {
                 )
             )
             .map((article, aIdx) => {
+            const allQuartersSelected = showQuarterTotals.every(Boolean);
             const filteredWorks = article.works.filter(
               (w) =>
                 (yearFilter === "all" || String(w.year) === yearFilter) &&
-                (respFilter === "all" || w.responsible === respFilter)
+                (respFilter === "all" || w.responsible === respFilter) &&
+                (allQuartersSelected || workHasVisibleData(w))
             );
             const { monthTotals, quarterTotals } = calcTotals({
               ...article,
               works: filteredWorks,
             });
 
+            const expanded = expandedArticles.includes(article.id);
+
             return (
               <React.Fragment key={`${article.name}-${aIdx}`}>
-                {showDetails &&
-                  article.works
-                    .filter(
-                      (w) =>
-                        (yearFilter === "all" || String(w.year) === yearFilter) &&
-                        (respFilter === "all" || w.responsible === respFilter)
-                    )
-                    .map((work, wIdx) => (
+                {expanded &&
+                  filteredWorks.map((work, wIdx) => (
                     <tr
                       key={work.id}
                       className="hover:bg-gray-50 cursor-pointer"
@@ -709,9 +793,16 @@ const BudgetTableDemo = () => {
                     >
                       {wIdx === 0 && (
                         <td
-                          rowSpan={filteredWorks.length + 1}
-                          className="border p-2 font-semibold bg-gray-100 align-top"
+                          rowSpan={expanded ? filteredWorks.length + 1 : 1}
+                          className="border p-2 font-semibold bg-gray-100 align-top w-48 max-w-[12rem] cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleArticleExpand(article.id);
+                          }}
                         >
+                          <span className="mr-1">
+                            {expanded ? "▼" : "►"}
+                          </span>
                           {article.name}
                         </td>
                       )}
@@ -729,23 +820,51 @@ const BudgetTableDemo = () => {
                           {work.year} · {work.responsible || "—"}
                         </div>
                       </td>
-                      {visibleMonths.map((m) => (
-                        <td key={m} className="border p-2 text-right">
-                          {renderCell(
-                            (work.accruals || {})[m],
-                            (work.payments || {})[m],
-                            (work.actual_accruals || {})[m],
-                            (work.actual_payments || {})[m]
-                          )}
-                        </td>
-                      ))}
+                      {visibleMonths.map((m) => {
+                        const planAcc = (work.accruals || {})[m] || 0;
+                        const planPay = (work.payments || {})[m] || 0;
+                        const factAcc = (work.actual_accruals || {})[m] || 0;
+                        const factPay = (work.actual_payments || {})[m] || 0;
+
+                        // show tooltip only if any figure is non‑zero
+                        const hasData = planAcc || planPay || factAcc || factPay;
+
+                        const tooltipLines = hasData
+                          ? [
+                              `Работа: ${work.name}`,
+                              `Месяц: ${m}`,
+                              `План начисл.: ${planAcc.toLocaleString("ru-RU")}`,
+                              `План оплат: ${planPay.toLocaleString("ru-RU")}`,
+                              `Факт начисл.: ${factAcc.toLocaleString("ru-RU")}`,
+                              `Факт оплат: ${factPay.toLocaleString("ru-RU")}`,
+                              work.justification ? `Обоснование: ${work.justification}` : null,
+                              work.responsible ? `Ответственный: ${work.responsible}` : null,
+                            ]
+                              .filter(Boolean)
+                              .join("\n")
+                          : null;
+
+                        return (
+                          <td
+                            key={m}
+                            className="border p-2 text-right"
+                            {...(tooltipLines ? { title: tooltipLines } : {})}
+                          >
+                            {renderCell(planAcc, planPay, factAcc, factPay)}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
 
                 {/* итоговая строка по статье */}
                 <tr key={`totals-${article.name}`}>
-                  {!showDetails && (
-                    <td className="border p-2 font-semibold bg-teal-50">
+                  {!expanded && (
+                    <td
+                      className="border p-2 font-semibold bg-gray-100 w-48 max-w-[12rem] cursor-pointer"
+                      onClick={() => toggleArticleExpand(article.id)}
+                    >
+                      <span className="mr-1">►</span>
                       {article.name}
                     </td>
                   )}
@@ -771,7 +890,13 @@ const BudgetTableDemo = () => {
                 {showQuarterTotals.some(Boolean) && (
                   <tr key={`qtotals-${article.name}`}>
                     {/* placeholder for sticky "Статья" column */}
-                    <td className="border p-2 bg-emerald-50" />
+                    <td
+                      className={
+                        expanded
+                          ? "border p-2 bg-emerald-50 w-48 max-w-[12rem]"
+                          : "border p-2 bg-emerald-50"
+                      }
+                    />
                     {/* label cell for row */}
                     <td className="border p-2 bg-emerald-50 font-medium">
                       Квартальный итог
@@ -1037,6 +1162,15 @@ const BudgetTableDemo = () => {
           </DialogContent>
         </Dialog>
       )}
+      {/* floating add‑work FAB */}
+      <Button
+        variant="default"
+        className="fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 p-0 shadow-lg bg-sky-600 hover:bg-sky-700 text-white"
+        onClick={handleAddWorkFab}
+        title="Новая работа"
+      >
+        <Plus className="w-7 h-7" />
+      </Button>
       </div>
     </div>
   );
