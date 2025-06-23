@@ -35,11 +35,7 @@ class Work(models.Model):
 
 
 class Material(models.Model):
-    """Прикреплённые файлы"""
-    work = models.ForeignKey(Work, related_name="materials",
-                             on_delete=models.CASCADE)
-    file = models.FileField(upload_to="materials/")
+    work       = models.ForeignKey(Work, related_name="materials",
+                                   on_delete=models.CASCADE)
+    file       = models.FileField(upload_to="materials/%Y/%m/")
     uploaded_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.file.name

@@ -4,7 +4,7 @@ from .models import BudgetItem, Work, Material
 class MaterialSerializer(serializers.ModelSerializer):
     class Meta:
         model = Material
-        fields = ("id", "file")
+        fields = ("id", "file", "uploaded_at")
 
 class WorkSerializer(serializers.ModelSerializer):
     item = serializers.PrimaryKeyRelatedField(
@@ -17,7 +17,7 @@ class WorkSerializer(serializers.ModelSerializer):
         model = Work
         fields = (
             "id", "item",
-            "year", "responsible",          # ← новые
+            "year", "responsible",
             "name", "justification", "comment",
             "accruals", "payments",
             "actual_accruals", "actual_payments",

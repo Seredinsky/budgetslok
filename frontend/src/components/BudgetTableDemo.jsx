@@ -18,9 +18,22 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2, Paperclip, X } from "lucide-react";
 import axios from "axios";
+
 import clsx from "clsx";
 
+// утилита: извлечь красивое имя файла из URL (decodeURIComponent последнего сегмента)
+const niceFileName = (url, fallback = "файл") => {
+  if (!url) return fallback;
+  try {
+    const parts = url.split("/");
+    return decodeURIComponent(parts[parts.length - 1]);
+  } catch {
+    return fallback;
+  }
+};
+
 const API = "http://127.0.0.1:8000/api/items/";
+const MATERIALS_API = "http://127.0.0.1:8000/api/materials/";
 
 /**
  * BudgetTableDemo.jsx – рабочая версия с поддержкой материалов
@@ -333,12 +346,52 @@ const BudgetTableDemo = () => {
     });
 
   // file handlers
-  const handleFileAdd = (e) => {
-    const files = Array.from(e.target.files).map((f) => ({ name: f.name }));
-    setMaterials((prev) => [...prev, ...files]);
-    e.target.value = ""; // reset input
+  const handleFileAdd = async (e) => {
+    const filesArr = Array.from(e.target.files);
+    e.target.value = ""; // сбрасываем input
+
+    if (!filesArr.length) return;
+
+    // id работы: если новая, помечаем как "tmp"
+    const workId =
+      selected?.workIdx === null
+        ? "tmp"
+        : data[selected.articleIdx].works[selected.workIdx].id;
+
+    try {
+      const uploaded = await Promise.all(
+        filesArr.map(async (file) => {
+          const form = new FormData();
+          form.append("file", file);
+          form.append("work", workId);
+          const { data } = await axios.post(MATERIALS_API, form, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+          return data; // { id, file, work, ... }
+        })
+      );
+      setMaterials((prev) => [...prev, ...uploaded]);
+    } catch (err) {
+      console.error(err);
+      alert("Не удалось загрузить файл(ы).");
+    }
   };
-  const removeMaterial = (idx) => setMaterials((prev) => prev.filter((_, i) => i !== idx));
+  const removeMaterial = async (idx) => {
+    setMaterials((prev) => {
+      const target = prev[idx];
+      // оптимистично убираем из списка
+      const next = prev.filter((_, i) => i !== idx);
+
+      // если файл уже сохранён на сервере (есть id и work != "tmp") — удаляем через API
+      if (target?.id && target.work !== "tmp") {
+        axios
+          .delete(`${MATERIALS_API}${target.id}/`)
+          .catch((err) => console.error("Не удалось удалить файл:", err));
+      }
+
+      return next;
+    });
+  };
 
   // open dialog
   const openDialog = (articleIdx, workIdx = null) => {
@@ -405,6 +458,16 @@ const BudgetTableDemo = () => {
 
       // use data returned from backend to keep ids in sync
       const savedWork = response.data;
+      // если работа была новой — привязываем загруженные файлы, у которых work=="tmp"
+      if (workIdx === null && materials.some((m) => m.work === "tmp")) {
+        await Promise.all(
+          materials
+            .filter((m) => m.work === "tmp")
+            .map((m) =>
+              axios.patch(`${MATERIALS_API}${m.id}/`, { work: savedWork.id })
+            )
+        );
+      }
 
       setData((prev) => {
         const clone = structuredClone(prev);
@@ -586,7 +649,7 @@ const BudgetTableDemo = () => {
 
       {/* main content */}
       <div className="flex-1">
-        <h1 className="text-2xl font-bold mb-4">Бюджет — демо</h1>
+        <h1 className="text-2xl font-bold mb-4">Бюджет Службы обеспечения качества</h1>
         {/* summary card */}
         <div className="mb-4 flex flex-wrap items-center gap-4">
           <div className="bg-white border rounded shadow-sm p-4 flex items-center gap-6">
@@ -1034,7 +1097,19 @@ const BudgetTableDemo = () => {
                   <ul className="list-disc pl-5 mb-2 space-y-1 text-sm">
                     {materials.map((f, idx) => (
                       <li key={idx} className="flex items-center gap-2">
-                        {f.name}
+                        {f.file ? (
+                          <a
+                            href={f.file}
+                            download
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline"
+                          >
+                            {niceFileName(f.file, f.name)}
+                          </a>
+                        ) : (
+                          f.name
+                        )}
                         <Button size="icon" variant="ghost" onClick={() => removeMaterial(idx)}>
                           <X className="w-4 h-4" />
                         </Button>
