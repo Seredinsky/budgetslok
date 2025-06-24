@@ -900,6 +900,8 @@ const BudgetTableDemo = () => {
             )
         )
         .map((article, aIdx) => {
+          // find index of this article in full data array
+          const realArticleIdx = data.findIndex((a) => a.id === article.id);
           const allQuartersSelected = showQuarterTotals.every(Boolean);
           const filteredWorks = article.works.filter(
             (w) =>
@@ -1079,7 +1081,7 @@ const BudgetTableDemo = () => {
                               "cursor-pointer hover:bg-gray-50",
                               wIdx === 0 && "border-t-2 border-gray-300"
                             )}
-                            onClick={() => openDialog(aIdx, wIdx)}
+                            onClick={() => openDialog(realArticleIdx, wIdx)}
                           >
                             {wIdx === 0 && (
                               <td
@@ -1207,6 +1209,7 @@ const BudgetTableDemo = () => {
                   </tbody>
                 </table>
               </div>
+          
             </div>
           );
         })}
