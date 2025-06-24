@@ -29,6 +29,18 @@ class Work(models.Model):
     responsible = models.CharField(
         "Ответственный (ФИО)", max_length=120, blank=True
     )
+    # Ставка НДС: 0%, 5% или 20%
+    VAT_CHOICES = [
+        (0, "0%"),
+        (5, "5%"),
+        (20, "20%"),
+    ]
+    vat_rate = models.PositiveSmallIntegerField(
+        "Ставка НДС",
+        choices=VAT_CHOICES,
+        default=0,
+        help_text="Процент НДС"
+    )
 
     def __str__(self):
         return self.name

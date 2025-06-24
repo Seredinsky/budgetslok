@@ -3,10 +3,12 @@ from .models import BudgetItem, Work, Material, QuarterReserve
 
 class MaterialInline(admin.TabularInline):
     model = Material
+    fk_name = "work"
     extra = 0
 
 class WorkInline(admin.TabularInline):
     model = Work
+    fk_name = "item"
     extra = 0
 
 @admin.register(BudgetItem)
@@ -15,9 +17,9 @@ class BudgetItemAdmin(admin.ModelAdmin):
 
 @admin.register(Work)
 class WorkAdmin(admin.ModelAdmin):
-    list_display = ("name", "item", "year", "responsible")
-    list_filter  = ("year",)
-    search_fields = ("name", "responsible")
+    list_display = ("name", "item", "vat_rate")
+    list_filter  = ("item", "vat_rate")
+    search_fields = ("name",)
     inlines = [MaterialInline]
 
 @admin.register(QuarterReserve)

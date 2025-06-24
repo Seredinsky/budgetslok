@@ -21,6 +21,7 @@ class WorkSerializer(serializers.ModelSerializer):
             "name", "justification", "comment",
             "accruals", "payments",
             "actual_accruals", "actual_payments",
+            "vat_rate",
             "materials",
         )
 

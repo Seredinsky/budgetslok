@@ -86,7 +86,7 @@ const BudgetTableDemo = () => {
 
   const [mode, setMode] = useState("both"); // "plan" | "fact" | "both"
   // отображать начисления, оплаты или оба
-  const [flowMode, setFlowMode] = useState("both"); // "acc" | "pay" | "both"
+  const [flowMode, setFlowMode] = useState("acc"); // "acc" | "pay" | "both"
   const showAccruals = flowMode === "acc" || flowMode === "both";
   const showPayments = flowMode === "pay" || flowMode === "both";
   // выбранные статьи для отображения (id)
@@ -438,6 +438,7 @@ const BudgetTableDemo = () => {
       setMaterials([]);
       setAccrualRows([{ month: "", amount: "", checked: false, actual: "" }]);
       setPaymentRows([{ month: "", amount: "", checked: false, actual: "" }]);
+      setVatRate(0);
     } else {
       // editing existing work
       w = article.works[workIdx];
@@ -450,6 +451,7 @@ const BudgetTableDemo = () => {
       setMaterials(w.materials || []);
       setAccrualRows(objToRows(w.accruals, w.actual_accruals));
       setPaymentRows(objToRows(w.payments, w.actual_payments));
+      setVatRate(w.vat_rate || 0);
     }
 
     // initialize reserve toggle:
@@ -487,6 +489,7 @@ const BudgetTableDemo = () => {
       comment,
       year,
       responsible,
+      vat_rate: vatRate,
       materials,
     };
 
