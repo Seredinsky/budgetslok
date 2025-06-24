@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BudgetItem, Work, Material
+from .models import BudgetItem, Work, Material, QuarterReserve
 
 class MaterialInline(admin.TabularInline):
     model = Material
@@ -19,3 +19,17 @@ class WorkAdmin(admin.ModelAdmin):
     list_filter  = ("year",)
     search_fields = ("name", "responsible")
     inlines = [MaterialInline]
+
+@admin.register(QuarterReserve)
+class QuarterReserveAdmin(admin.ModelAdmin):
+    list_display = (
+        "item",
+        "year",
+        "quarter",
+        "accrual_sum",
+        "payment_sum",
+        "used_acc",
+        "used_pay",
+    )
+    list_filter = ("item", "year", "quarter")
+    search_fields = ("item__name",)

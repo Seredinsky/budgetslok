@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import BudgetItem, Work, Material
+from .models import BudgetItem, Work, Material, QuarterReserve
 
 class MaterialSerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,3 +30,22 @@ class BudgetItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = BudgetItem
         fields = ("id", "name", "works")
+
+class ReserveSerializer(serializers.ModelSerializer):
+    balance_acc = serializers.SerializerMethodField()
+    balance_pay = serializers.SerializerMethodField()
+
+    class Meta:
+        model = QuarterReserve
+        fields = (
+            "id", "item", "year", "quarter",
+            "accrual_sum", "payment_sum",
+            "used_acc", "used_pay",
+            "balance_acc", "balance_pay",
+        )
+
+    def get_balance_acc(self, obj):
+        return obj.accrual_sum - obj.used_acc
+
+    def get_balance_pay(self, obj):
+        return obj.payment_sum - obj.used_pay

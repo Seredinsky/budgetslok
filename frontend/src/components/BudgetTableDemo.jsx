@@ -16,7 +16,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Plus, Trash2, Paperclip, X } from "lucide-react";
+import { Plus, Trash2, Paperclip, X, CheckCircle } from "lucide-react";
 import axios from "axios";
 
 import clsx from "clsx";
@@ -75,7 +75,10 @@ const arrToFact = (rows) =>
 // ──────────── Компонент ────────────
 const BudgetTableDemo = () => {
   // table state
+  // имя текущего месяца (по индексам в monthKeys)
+  const currentMonthName = monthKeys[new Date().getMonth()];
   const [data, setData] = useState([]);
+  const [reserves, setReserves] = useState([]);   // квартальные резервы
 
   // какие статьи раскрыты (id)
   const [expandedArticles, setExpandedArticles] = useState([]);
@@ -137,11 +140,23 @@ const BudgetTableDemo = () => {
       });
     });
 
+    // добавляем свободный резерв по выбранным кварталам
+    reserves.forEach((r) => {
+      if (
+        selectedArticles.includes(r.item) &&
+        (yearFilter === "all" || String(r.year) === yearFilter) &&
+        showQuarterTotals[r.quarter - 1]
+      ) {
+        planAcc += r.balance_acc;
+        planPay += r.balance_pay;
+      }
+    });
+
     return {
       acc: { plan: planAcc, fact: factAcc },
       pay: { plan: planPay, fact: factPay },
     };
-  }, [data, selectedArticles, yearFilter, respFilter, visibleMonths]);
+  }, [data, selectedArticles, yearFilter, respFilter, visibleMonths, reserves, showQuarterTotals]);
 
   // для отображения активных фильтров (кроме статей)
   const activeFilterChips = useMemo(() => {
@@ -303,7 +318,12 @@ const BudgetTableDemo = () => {
       setSelectedArticles(data.map((it) => it.id));  // выбрать все по умолчанию
       setExpandedArticles(data.map((it) => it.id)); // раскрыть все по умолчанию
     });
+      // загружаем резервы
+    axios
+    .get("http://127.0.0.1:8000/api/reserves/")
+    .then(({ data }) => setReserves(data));
   }, []);
+  
   // переключение раскрытия конкретной статьи
   const toggleArticleExpand = (id) => {
     setExpandedArticles((prev) =>
@@ -321,6 +341,11 @@ const BudgetTableDemo = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState(null); // { articleIdx, workIdx }
 
+  // write-off reserve checkbox state
+  const [useReserve, setUseReserve] = useState(false);
+  // per-quarter write-off flags
+  const [reserveChecks, setReserveChecks] = useState({});
+
   // form fields
   const [workName, setWorkName] = useState("");
   const [justification, setJustification] = useState("");
@@ -332,6 +357,7 @@ const BudgetTableDemo = () => {
   const [workArticleId, setWorkArticleId] = useState(null);
   const [accrualRows, setAccrualRows] = useState([]);
   const [paymentRows, setPaymentRows] = useState([]);
+  const [vatRate, setVatRate] = useState(0);
 
   // ──────────── Helpers ────────────
   const addRow = (setter) =>
@@ -397,20 +423,24 @@ const BudgetTableDemo = () => {
   const openDialog = (articleIdx, workIdx = null) => {
     setSelected({ articleIdx, workIdx });
 
+    // prepare article and work for both new/edit modes
+    let article = data[articleIdx];
+    let w = null;
+
     if (workIdx === null) {
       // new work
       setWorkName("");
       setJustification("");
       setComment("");
       setYear(currentYear);
-      setWorkArticleId(data[articleIdx].id);
+      setWorkArticleId(article.id);
       setResponsible("");
       setMaterials([]);
       setAccrualRows([{ month: "", amount: "", checked: false, actual: "" }]);
       setPaymentRows([{ month: "", amount: "", checked: false, actual: "" }]);
     } else {
-      const article = data[articleIdx];
-      const w = article.works[workIdx];
+      // editing existing work
+      w = article.works[workIdx];
       setWorkName(w.name);
       setJustification(w.justification || "");
       setComment(w.comment || "");
@@ -419,8 +449,23 @@ const BudgetTableDemo = () => {
       setWorkArticleId(article.id);
       setMaterials(w.materials || []);
       setAccrualRows(objToRows(w.accruals, w.actual_accruals));
-      setPaymentRows(objToRows(w.payments, w.actual_payments))
+      setPaymentRows(objToRows(w.payments, w.actual_payments));
     }
+
+    // initialize reserve toggle:
+    if (workIdx === null) {
+      setUseReserve(false);
+    } else {
+      // check if any quarter reserve exists for this article/year
+      const any = quarters.some((_, qi) =>
+        Boolean(findReserve(article.id, w.year, qi + 1))
+      );
+      setUseReserve(any);
+    }
+    // reset per-quarter flags to false
+    const initChecks = {};
+    quarters.forEach((_, i) => { initChecks[i] = false; });
+    setReserveChecks(initChecks);
 
     setDialogOpen(true);
   };
@@ -482,6 +527,36 @@ const BudgetTableDemo = () => {
         return clone;
       });
 
+      // perform reserve write-offs for checked quarters
+      if (useReserve) {
+        await Promise.all(
+          Object.entries(reserveChecks)
+            .filter(([qIdx, checked]) => checked)
+            .map(async ([qIdx]) => {
+              const idx = Number(qIdx);
+              const monthsQ = monthKeys.slice(idx * 3, idx * 3 + 3);
+              const sumAcc = accrualRows.reduce(
+                (sum, r) => (monthsQ.includes(r.month) ? sum + Number(r.amount || 0) : sum),
+                0
+              );
+              const sumPay = paymentRows.reduce(
+                (sum, r) => (monthsQ.includes(r.month) ? sum + Number(r.amount || 0) : sum),
+                0
+              );
+              const reserve = findReserve(workArticleId, year, idx + 1);
+              if (reserve) {
+                await axios.post(
+                  `http://127.0.0.1:8000/api/reserves/${reserve.id}/write_off/`,
+                  { acc: sumAcc, pay: sumPay }
+                );
+              }
+            })
+        );
+        // refresh reserves
+        const { data: fresh } = await axios.get("http://127.0.0.1:8000/api/reserves/");
+        setReserves(fresh);
+      }
+
       setDialogOpen(false);
     } catch (err) {
       console.error(err);
@@ -509,7 +584,14 @@ const BudgetTableDemo = () => {
       allMaps.some((obj) => obj[m] && obj[m] !== 0)
     );
   };
-
+   // вернуть резерв по статье, году и кварталу (1-4)
+  const findReserve = (itemId, year, quarter) =>
+   reserves.find(
+    (r) =>
+      r.item === itemId &&
+      Number(r.year) === Number(year) &&
+      Number(r.quarter) === Number(quarter)
+  );
   // суммирование по статье: месяцы и кварталы (отдельно Н и О, план и факт)
   const calcTotals = (article) => {
     const monthTotals = {};
@@ -544,25 +626,24 @@ const BudgetTableDemo = () => {
       quarterTotals[qIdx].fAcc += fAcc;
       quarterTotals[qIdx].fPay += fPay;
     });
-
+    // + свободный резерв
+    quarterTotals.forEach((qt, qi) => {
+      const res = findReserve(
+        article.id,
+        yearFilter === "all" ? currentYear : yearFilter,
+        qi + 1
+      );
+      if (res) {
+        qt.acc += res.balance_acc;
+        qt.pay += res.balance_pay;
+      }
+    });
     return { monthTotals, quarterTotals };
   };
 
   // ──────────── Render ────────────
   return (
-    <div className="flex h-full w-full">
-      {/* hamburger button */}
-      <button
-        type="button"
-        className="absolute top-3 left-3 z-40 p-2 rounded border bg-white shadow-sm"
-        onClick={() => setSettingsOpen(true)}
-      >
-        <span className="sr-only">Открыть меню</span>
-        {/* simple icon */}
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <path d="M3 6h14M3 10h14M3 14h14" stroke="#333" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
-      </button>
+    <div className="fixed inset-0 overflow-auto">
 
       {/* drawer */}
       {settingsOpen && (
@@ -648,7 +729,19 @@ const BudgetTableDemo = () => {
       )}
 
       {/* main content */}
-      <div className="flex-1">
+      <div className="w-full px-4 py-4 relative">
+        {/* hamburger button */}
+        <button
+          type="button"
+          className="absolute top-4 left-4 z-40 p-2 rounded border bg-white shadow-sm"
+          onClick={() => setSettingsOpen(true)}
+        >
+          <span className="sr-only">Открыть меню</span>
+          {/* simple icon */}
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M3 6h14M3 10h14M3 14h14" stroke="#333" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </button>
         <h1 className="text-2xl font-bold mb-4">Бюджет Службы обеспечения качества</h1>
         {/* summary card */}
         <div className="mb-4 flex flex-wrap items-center gap-4">
@@ -793,204 +886,332 @@ const BudgetTableDemo = () => {
       </div>
 
       {/* ---------- TABLE ---------- */}
-      <div className="overflow-x-auto">
-      <table className="min-w-full table-fixed border-collapse text-sm">
-        <thead>
-          <tr className="bg-gray-100 text-center">
-            <th rowSpan={2} className="border p-2 bg-gray-100 w-48 max-w-[12rem]">
-              Статья
-            </th>
-            <th rowSpan={2} className="border p-2 bg-gray-100">
-              Работа
-            </th>
-            {quarters.map((q, i) =>
-              showQuarterTotals[i] ? (
-                <th key={q} colSpan={3} className="border p-2">
-                  {q}
-                </th>
-              ) : null
-            )}
-          </tr>
-          <tr className="bg-gray-50 text-center">
-            {visibleMonths.map((m) => (
-              <th key={m} className="border p-2">
-                {m}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data
-            .filter(
-              (a) =>
-                selectedArticles.includes(a.id) &&
-                a.works.some(
-                  (w) =>
-                    (yearFilter === "all" || String(w.year) === yearFilter) &&
-                    (respFilter === "all" || w.responsible === respFilter)
-                )
-            )
-            .map((article, aIdx) => {
-            const allQuartersSelected = showQuarterTotals.every(Boolean);
-            const filteredWorks = article.works.filter(
+      {data
+        .filter(
+          (a) =>
+            selectedArticles.includes(a.id) &&
+            a.works.some(
               (w) =>
                 (yearFilter === "all" || String(w.year) === yearFilter) &&
-                (respFilter === "all" || w.responsible === respFilter) &&
-                (allQuartersSelected || workHasVisibleData(w))
-            );
-            const { monthTotals, quarterTotals } = calcTotals({
-              ...article,
-              works: filteredWorks,
-            });
-
-            const expanded = expandedArticles.includes(article.id);
-
-            return (
-              <React.Fragment key={`${article.name}-${aIdx}`}>
-                {expanded &&
-                  filteredWorks.map((work, wIdx) => (
-                    <tr
-                      key={work.id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => openDialog(aIdx, wIdx)}
-                    >
-                      {wIdx === 0 && (
-                        <td
-                          rowSpan={expanded ? filteredWorks.length + 1 : 1}
-                          className="border p-2 font-semibold bg-gray-100 align-top w-48 max-w-[12rem] cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleArticleExpand(article.id);
-                          }}
-                        >
-                          <span className="mr-1">
-                            {expanded ? "▼" : "►"}
-                          </span>
-                          {article.name}
-                        </td>
-                      )}
-                      <td className="border p-2 bg-white">
-                        <div className="flex items-center gap-1">
-                          {work.name}
-                          {work.materials?.length > 0 && (
-                            <span className="inline-flex items-center text-xs text-gray-500">
-                              <Paperclip className="w-3 h-3 mr-0.5" />
-                              {work.materials.length}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {work.year} · {work.responsible || "—"}
-                        </div>
-                      </td>
-                      {visibleMonths.map((m) => {
-                        const planAcc = (work.accruals || {})[m] || 0;
-                        const planPay = (work.payments || {})[m] || 0;
-                        const factAcc = (work.actual_accruals || {})[m] || 0;
-                        const factPay = (work.actual_payments || {})[m] || 0;
-
-                        // show tooltip only if any figure is non‑zero
-                        const hasData = planAcc || planPay || factAcc || factPay;
-
-                        const tooltipLines = hasData
-                          ? [
-                              `Работа: ${work.name}`,
-                              `Месяц: ${m}`,
-                              `План начисл.: ${planAcc.toLocaleString("ru-RU")}`,
-                              `План оплат: ${planPay.toLocaleString("ru-RU")}`,
-                              `Факт начисл.: ${factAcc.toLocaleString("ru-RU")}`,
-                              `Факт оплат: ${factPay.toLocaleString("ru-RU")}`,
-                              work.justification ? `Обоснование: ${work.justification}` : null,
-                              work.responsible ? `Ответственный: ${work.responsible}` : null,
-                            ]
-                              .filter(Boolean)
-                              .join("\n")
-                          : null;
-
-                        return (
-                          <td
-                            key={m}
-                            className="border p-2 text-right"
-                            {...(tooltipLines ? { title: tooltipLines } : {})}
+                (respFilter === "all" || w.responsible === respFilter)
+            )
+        )
+        .map((article, aIdx) => {
+          const allQuartersSelected = showQuarterTotals.every(Boolean);
+          const filteredWorks = article.works.filter(
+            (w) =>
+              (yearFilter === "all" || String(w.year) === yearFilter) &&
+              (respFilter === "all" || w.responsible === respFilter) &&
+              (allQuartersSelected || workHasVisibleData(w))
+          );
+          const { monthTotals, quarterTotals } = calcTotals({
+            ...article,
+            works: filteredWorks,
+          });
+          const expanded = expandedArticles.includes(article.id);
+          // calculate how many rows this article will render when expanded
+          const baseRows = filteredWorks.length; // one row per work
+          const totalsRows = 1 + (showQuarterTotals.some(Boolean) ? 1 : 0); // 1 for "Итого", +1 for quarterly totals if enabled
+          const expandedRowCount = baseRows + totalsRows;
+          // aggregated sums for collapsed view
+          const monthSumAcc = visibleMonths.reduce((s, m) => s + monthTotals[m].acc, 0);
+          const monthSumPay = visibleMonths.reduce((s, m) => s + monthTotals[m].pay, 0);
+          const monthSumFactAcc = visibleMonths.reduce((s, m) => s + monthTotals[m].fAcc, 0);
+          const monthSumFactPay = visibleMonths.reduce((s, m) => s + monthTotals[m].fPay, 0);
+          const quarterSumAcc = quarterTotals.reduce(
+            (s, qt, qi) => (showQuarterTotals[qi] ? s + qt.acc : s),
+            0
+          );
+          const quarterSumPay = quarterTotals.reduce(
+            (s, qt, qi) => (showQuarterTotals[qi] ? s + qt.pay : s),
+            0
+          );
+          const quarterSumFactAcc = quarterTotals.reduce(
+            (s, qt, qi) => (showQuarterTotals[qi] ? s + qt.fAcc : s),
+            0
+          );
+          const quarterSumFactPay = quarterTotals.reduce(
+            (s, qt, qi) => (showQuarterTotals[qi] ? s + qt.fPay : s),
+            0
+          );
+          return (
+            <div key={article.id} className="mb-8">
+              <h2 className="text-lg font-semibold mb-2">{article.name}</h2>
+              <div className="overflow-x-auto w-full">
+                <table className="w-full table-fixed border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th
+                        rowSpan={2}
+                        className="border p-2 bg-gray-100 w-48 max-w-[12rem] text-center sticky top-0 z-10"
+                      >
+                        Статья
+                      </th>
+                      <th
+                        rowSpan={2}
+                        className="border p-2 bg-gray-100 text-center sticky top-0 z-10 w-56 max-w-[14rem]"
+                      >
+                        Работа
+                      </th>
+                      {quarters.map((q, i) =>
+                        showQuarterTotals[i] ? (
+                          <th
+                            key={q}
+                            colSpan={3}
+                            className="border p-2 text-center sticky top-0 z-10 bg-gray-100"
                           >
-                            {renderCell(planAcc, planPay, factAcc, factPay)}
+                            {q}
+                          </th>
+                        ) : null
+                      )}
+                    </tr>
+                    <tr className="bg-gray-50">
+                      {visibleMonths.map((m) => (
+                        <th
+                          key={m}
+                          className={clsx(
+                            "border p-2 text-center sticky top-8 z-10 bg-gray-50",
+                            m === currentMonthName && "bg-yellow-100"
+                          )}
+                        >
+                          {m}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* collapse row for folded article: show article and totals */}
+                    {!expanded && (
+                      <>
+                        {/* collapse row: only article header */}
+                        <tr
+                          key={`collapsed-${article.id}`}
+                          className="cursor-pointer border-t-2 border-gray-300"
+                          onClick={() => toggleArticleExpand(article.id)}
+                        >
+                          {/* Arrow + article name */}
+                          <td
+                            rowSpan={2 + (showQuarterTotals.some(Boolean) ? 1 : 0)}
+                            className="border p-2 bg-gray-100 text-left font-semibold w-48 max-w-[12rem]"
+                          >
+                            <span className="mr-1">►</span>
+                            {article.name}
                           </td>
+                          {/* Blank filler for remaining columns */}
+                          <td
+                            colSpan={1 + visibleMonths.length}
+                            className="border-0 p-0 m-0"
+                          />
+                        </tr>
+                        {/* totals row */}
+                        <tr key={`totals-${article.name}`} className="border-t-2 border-gray-400">
+                          {/* Removed rowSpan from this td */}
+                          <td className="border p-2 bg-teal-50 text-center font-medium w-56 max-w-[14rem]">
+                            Итого
+                          </td>
+                          {visibleMonths.map((m) => (
+                            <td
+                              key={m}
+                              className="border p-2 bg-teal-50 font-medium text-center whitespace-pre-line"
+                            >
+                              {formatTotalLines(
+                                monthTotals[m].acc,
+                                monthTotals[m].pay,
+                                monthTotals[m].fAcc,
+                                monthTotals[m].fPay
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                        {/* quarterly totals row */}
+                        {showQuarterTotals.some(Boolean) && (
+                          <tr key={`qtotals-${article.name}`} className="border-t-2 border-gray-400">
+                            {/* Removed rowSpan from this td */}
+                            <td className="border p-2 bg-emerald-50 font-medium w-56 max-w-[14rem]">
+                              Квартальный итог
+                            </td>
+                            {quarterTotals.map((qt, qIdx) => {
+                              if (!showQuarterTotals[qIdx]) return null;
+                              const res = findReserve(
+                                article.id,
+                                yearFilter === "all" ? currentYear : yearFilter,
+                                qIdx + 1
+                              );
+                              const reserveLine = res
+                                ? `Резерв Н: ${res.balance_acc.toLocaleString("ru-RU")} / О: ${res.balance_pay.toLocaleString("ru-RU")}`
+                                : null;
+                              return (
+                                <td
+                                  key={qIdx}
+                                  colSpan={3}
+                                  className="border p-2 bg-emerald-50 font-medium text-center whitespace-pre-line"
+                                >
+                                  {formatTotalLines(qt.acc, qt.pay, qt.fAcc, qt.fPay)}
+                                  {reserveLine && (
+                                    <div className="text-[10px] text-gray-500 mt-1">
+                                      {reserveLine}
+                                    </div>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        )}
+                      </>
+                    )}
+                    {expanded &&
+                      filteredWorks.map((work, wIdx) => {
+                        // calculate overall plan vs fact for this work
+                        const planSum =
+                          Object.values(work.accruals || {}).reduce((s, v) => s + v, 0) +
+                          Object.values(work.payments || {}).reduce((s, v) => s + v, 0);
+                        const factSum =
+                          Object.values(work.actual_accruals || {}).reduce((s, v) => s + v, 0) +
+                          Object.values(work.actual_payments || {}).reduce((s, v) => s + v, 0);
+                        const completionPct = planSum > 0 ? Math.round((factSum / planSum) * 100) : null;
+                        return (
+                          <tr
+                            key={work.id}
+                            className={clsx(
+                              "cursor-pointer hover:bg-gray-50",
+                              wIdx === 0 && "border-t-2 border-gray-300"
+                            )}
+                            onClick={() => openDialog(aIdx, wIdx)}
+                          >
+                            {wIdx === 0 && (
+                              <td
+                                rowSpan={expandedRowCount}
+                                className="border p-2 font-semibold bg-gray-100 align-top w-48 max-w-[12rem] text-left"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleArticleExpand(article.id);
+                                }}
+                              >
+                                <span className="mr-1">{expanded ? "▼" : "►"}</span>
+                                {article.name}
+                              </td>
+                            )}
+                            <td className="border p-2 bg-white text-left relative w-56 max-w-[14rem]">
+                              <div className="flex items-center gap-1">
+                                {work.name}
+                                {work.materials?.length > 0 && (
+                                  <span className="inline-flex items-center text-xs text-gray-500">
+                                    <Paperclip className="w-3 h-3 mr-0.5" />
+                                    {work.materials.length}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {work.year} · {work.responsible || "—"}
+                              </div>
+                              {completionPct === 100 && (
+                                <CheckCircle
+                                  className="absolute top-1 right-1 w-4 h-4 text-emerald-500"
+                                />
+                              )}
+                            </td>
+                            {visibleMonths.map((m) => {
+                              const planAcc = (work.accruals || {})[m] || 0;
+                              const planPay = (work.payments || {})[m] || 0;
+                              const factAcc = (work.actual_accruals || {})[m] || 0;
+                              const factPay = (work.actual_payments || {})[m] || 0;
+                              // show tooltip only if any figure is non‑zero
+                              const hasData = planAcc || planPay || factAcc || factPay;
+                              const tooltipLines = hasData
+                                ? [
+                                    `Работа: ${work.name}`,
+                                    `Месяц: ${m}`,
+                                    `План начисл.: ${planAcc.toLocaleString("ru-RU")}`,
+                                    `План оплат: ${planPay.toLocaleString("ru-RU")}`,
+                                    `Факт начисл.: ${factAcc.toLocaleString("ru-RU")}`,
+                                    `Факт оплат: ${factPay.toLocaleString("ru-RU")}`,
+                                    work.justification ? `Обоснование: ${work.justification}` : null,
+                                    work.responsible ? `Ответственный: ${work.responsible}` : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join("\n")
+                                : null;
+                              return (
+                                <td
+                                  key={m}
+                                  className={clsx(
+                                    "border p-2 text-right",
+                                    m === currentMonthName && "bg-yellow-50"
+                                  )}
+                                  {...(tooltipLines ? { title: tooltipLines } : {})}
+                                >
+                                  {renderCell(planAcc, planPay, factAcc, factPay)}
+                                </td>
+                              );
+                            })}
+                          </tr>
                         );
                       })}
-                    </tr>
-                  ))}
-
-                {/* итоговая строка по статье */}
-                <tr key={`totals-${article.name}`}>
-                  {!expanded && (
-                    <td
-                      className="border p-2 font-semibold bg-gray-100 w-48 max-w-[12rem] cursor-pointer"
-                      onClick={() => toggleArticleExpand(article.id)}
-                    >
-                      <span className="mr-1">►</span>
-                      {article.name}
-                    </td>
-                  )}
-                  <td className="border p-2 bg-teal-50 text-center font-medium">
-                    Итого
-                  </td>
-                  {visibleMonths.map((m) => (
-                    <td
-                      key={m}
-                      className="border p-2 bg-teal-50 font-medium text-center whitespace-pre-line"
-                    >
-                      {formatTotalLines(
-                        monthTotals[m].acc,
-                        monthTotals[m].pay,
-                        monthTotals[m].fAcc,
-                        monthTotals[m].fPay
-                      )}
-                    </td>
-                  ))}
-                </tr>
-
-                {/* строка по кварталам */}
-                {showQuarterTotals.some(Boolean) && (
-                  <tr key={`qtotals-${article.name}`}>
-                    {/* placeholder for sticky "Статья" column */}
-                    <td
-                      className={
-                        expanded
-                          ? "border p-2 bg-emerald-50 w-48 max-w-[12rem]"
-                          : "border p-2 bg-emerald-50"
-                      }
-                    />
-                    {/* label cell for row */}
-                    <td className="border p-2 bg-emerald-50 font-medium">
-                      Квартальный итог
-                    </td>
-                    {/* only output cells for visible quarters */}
-                    {quarterTotals.map((qt, qIdx) =>
-                      showQuarterTotals[qIdx] ? (
-                        <td
-                          key={qIdx}
-                          colSpan={3}
-                          className="border p-2 bg-emerald-50 font-medium text-center whitespace-pre-line"
-                        >
-                          {formatTotalLines(qt.acc, qt.pay, qt.fAcc, qt.fPay)}
-                        </td>
-                      ) : null
+                    {expanded && (
+                      <>
+                        {/* итоговая строка по статье */}
+                        <tr key={`totals-${article.name}`} className="border-t-2 border-gray-400">
+                          <td className="border p-2 bg-teal-50 text-center font-medium w-56 max-w-[14rem]">
+                            Итого
+                          </td>
+                          {visibleMonths.map((m) => (
+                            <td
+                              key={m}
+                              className="border p-2 bg-teal-50 font-medium text-center whitespace-pre-line"
+                            >
+                              {formatTotalLines(
+                                monthTotals[m].acc,
+                                monthTotals[m].pay,
+                                monthTotals[m].fAcc,
+                                monthTotals[m].fPay
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                        {/* строка по кварталам */}
+                        {showQuarterTotals.some(Boolean) && (
+                          <tr key={`qtotals-${article.name}`} className="border-t-2 border-gray-400">
+                            <td className="border p-2 bg-emerald-50 font-medium w-56 max-w-[14rem]">
+                              Квартальный итог
+                            </td>
+                            {quarterTotals.map((qt, qIdx) => {
+                              if (!showQuarterTotals[qIdx]) return null;
+                              const res = findReserve(
+                                article.id,
+                                yearFilter === "all" ? currentYear : yearFilter,
+                                qIdx + 1
+                              );
+                              const reserveLine = res
+                                ? `Резерв Н: ${res.balance_acc.toLocaleString("ru-RU")} / О: ${res.balance_pay.toLocaleString("ru-RU")}`
+                                : null;
+                              return (
+                                <td
+                                  key={qIdx}
+                                  colSpan={3}
+                                  className="border p-2 bg-emerald-50 font-medium text-center whitespace-pre-line"
+                                >
+                                  {formatTotalLines(qt.acc, qt.pay, qt.fAcc, qt.fPay)}
+                                  {reserveLine && (
+                                    <div className="text-[10px] text-gray-500 mt-1">{reserveLine}</div>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        )}
+                      </>
                     )}
-                  </tr>
-                )}
-
-                {/* кнопка добавить работу (если показывают детали) */}
-              </React.Fragment>
-            );
-          })}
-        </tbody>
-      </table>
-      </div>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
 
       {/* ---------- DIALOG ---------- */}
       {dialogOpen && (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-4xl w-full">
+          <DialogContent className="max-w-screen-xl w-full">
             <DialogHeader>
               <DialogTitle>
                 {selected?.workIdx === null ? "Новая работа" : "Редактирование работы"}
@@ -1009,7 +1230,7 @@ const BudgetTableDemo = () => {
                   value={workArticleId ? String(workArticleId) : ""}
                   onValueChange={(v) => setWorkArticleId(Number(v))}
                 >
-                  <SelectTrigger className="w-60">
+                  <SelectTrigger className="w-110">
                     <SelectValue placeholder="Выберите статью" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1119,8 +1340,87 @@ const BudgetTableDemo = () => {
                 )}
                 <Input type="file" multiple onChange={handleFileAdd} className="cursor-pointer" />
               </section>
+              {/* НДС */}
+              <div className="mb-4">
+                <label className="block text-sm mb-1 font-medium">НДС</label>
+                <Select value={String(vatRate)} onValueChange={(v) => setVatRate(Number(v))}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder={`${vatRate}%`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[0, 5, 20].map((r) => (
+                      <SelectItem key={r} value={String(r)}>
+                        {r}%
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-              {/* ACCRUALS */}
+              {/* PAYMENTS */}
+              <section>
+                <h3 className="font-semibold mb-2">Оплаты (план / факт)</h3>
+                {paymentRows.map((row, idx) => (
+                  <div key={idx} className="flex flex-wrap items-center gap-2 mb-2">
+                    <Select
+                      value={row.month}
+                      onValueChange={(val) => updateRow(setPaymentRows, idx, "month", val)}
+                    >
+                      <SelectTrigger className="w-24">
+                        <SelectValue placeholder="Мес." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {monthKeys.map((m) => (
+                          <SelectItem key={m} value={m}>
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      placeholder="План"
+                      className="w-28"
+                      value={row.amount}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        // update gross payment amount (including VAT)
+                        updateRow(setPaymentRows, idx, "amount", val);
+                        // calculate net accrual amount (excluding VAT)
+                        const net = vatRate
+                          ? (Number(val) / (1 + vatRate / 100)).toFixed(2)
+                          : val;
+                        updateRow(setAccrualRows, idx, "amount", net);
+                      }}
+                    />
+                    <label className="flex items-center text-sm">
+                      <input
+                        type="checkbox"
+                        className="mr-1"
+                        checked={row.checked}
+                        onChange={(e) => updateRow(setPaymentRows, idx, "checked", e.target.checked)}
+                      />
+                      Факт
+                    </label>
+                    {row.checked && (
+                      <Input
+                        type="number"
+                        placeholder="Факт"
+                        className="w-28"
+                        value={row.actual}
+                        onChange={(e) => updateRow(setPaymentRows, idx, "actual", e.target.value)}
+                      />
+                    )}
+                    <Button size="icon" variant="ghost" onClick={() => delRow(setPaymentRows, idx)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button variant="secondary" size="sm" onClick={() => addRow(setPaymentRows)}>
+                  <Plus className="w-4 h-4 mr-1" /> Добавить строку
+                </Button>
+              </section>
+                            {/* ACCRUALS */}
               <section>
                 <h3 className="font-semibold mb-2">Начисления (план / факт)</h3>
                 {accrualRows.map((row, idx) => (
@@ -1174,63 +1474,55 @@ const BudgetTableDemo = () => {
                   <Plus className="w-4 h-4 mr-1" /> Добавить строку
                 </Button>
               </section>
+              {/* Toggle reserve write-off */}
+              <div className="flex items-center gap-2 mb-4">
+                <input
+                  id="useReserve"
+                  type="checkbox"
+                  checked={useReserve}
+                  onChange={(e) => setUseReserve(e.target.checked)}
+                />
+                <label htmlFor="useReserve" className="text-sm">
+                  Списать из резерва
+                </label>
+              </div>
+              {useReserve && (
+                <section className="mb-4">
+                  <h3 className="font-semibold mb-2">Списать из резерва</h3>
+                  {quarters.map((label, idx) => {
+                    const monthsQ = monthKeys.slice(idx * 3, idx * 3 + 3);
+                    const sumAcc = accrualRows.reduce(
+                      (sum, r) => (monthsQ.includes(r.month) ? sum + Number(r.amount || 0) : sum),
+                      0
+                    );
+                    const sumPay = paymentRows.reduce(
+                      (sum, r) => (monthsQ.includes(r.month) ? sum + Number(r.amount || 0) : sum),
+                      0
+                    );
+                    const reserve = findReserve(workArticleId, year, idx + 1);
+                    if (!reserve || (sumAcc === 0 && sumPay === 0)) return null;
+                    return (
+                      <label key={idx} className="flex items-center gap-2 mb-1">
+                        <input
+                          type="checkbox"
+                          checked={!!reserveChecks[idx]}
+                          onChange={(e) =>
+                            setReserveChecks((prev) => ({
+                              ...prev,
+                              [idx]: e.target.checked,
+                            }))
+                          }
+                        />
+                        <span className="text-sm">
+                          {label} — План Н: {sumAcc.toLocaleString("ru-RU")}₽, О: {sumPay.toLocaleString("ru-RU")}₽
+                        </span>
+                      </label>
+                    );
+                  })}
+                </section>
 
-              {/* PAYMENTS */}
-              <section>
-                <h3 className="font-semibold mb-2">Оплаты (план / факт)</h3>
-                {paymentRows.map((row, idx) => (
-                  <div key={idx} className="flex flex-wrap items-center gap-2 mb-2">
-                    <Select
-                      value={row.month}
-                      onValueChange={(val) => updateRow(setPaymentRows, idx, "month", val)}
-                    >
-                      <SelectTrigger className="w-24">
-                        <SelectValue placeholder="Мес." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {monthKeys.map((m) => (
-                          <SelectItem key={m} value={m}>
-                            {m}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      type="number"
-                      placeholder="План"
-                      className="w-28"
-                      value={row.amount}
-                      onChange={(e) => updateRow(setPaymentRows, idx, "amount", e.target.value)}
-                    />
-                    <label className="flex items-center text-sm">
-                      <input
-                        type="checkbox"
-                        className="mr-1"
-                        checked={row.checked}
-                        onChange={(e) => updateRow(setPaymentRows, idx, "checked", e.target.checked)}
-                      />
-                      Факт
-                    </label>
-                    {row.checked && (
-                      <Input
-                        type="number"
-                        placeholder="Факт"
-                        className="w-28"
-                        value={row.actual}
-                        onChange={(e) => updateRow(setPaymentRows, idx, "actual", e.target.value)}
-                      />
-                    )}
-                    <Button size="icon" variant="ghost" onClick={() => delRow(setPaymentRows, idx)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button variant="secondary" size="sm" onClick={() => addRow(setPaymentRows)}>
-                  <Plus className="w-4 h-4 mr-1" /> Добавить строку
-                </Button>
-              </section>
+              )}
             </div>
-
             <DialogFooter className="mt-4">
               <Button onClick={handleSave}>Сохранить</Button>
             </DialogFooter>

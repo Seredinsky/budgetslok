@@ -39,3 +39,21 @@ class Material(models.Model):
                                    on_delete=models.CASCADE)
     file       = models.FileField(upload_to="materials/%Y/%m/")
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+# budget/models.py
+class QuarterReserve(models.Model):
+    QUARTERS = (
+        (1, "I"), (2, "II"), (3, "III"), (4, "IV")
+    )
+    item        = models.ForeignKey(BudgetItem,
+                                    related_name="reserves",
+                                    on_delete=models.CASCADE)
+    year        = models.PositiveSmallIntegerField()
+    quarter     = models.PositiveSmallIntegerField(choices=QUARTERS)
+    accrual_sum = models.DecimalField(max_digits=12, decimal_places=2, default=0)   # план
+    payment_sum = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    used_acc    = models.DecimalField(max_digits=12, decimal_places=2, default=0)   # освоено
+    used_pay    = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        unique_together = ("item", "year", "quarter")
