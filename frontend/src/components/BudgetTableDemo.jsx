@@ -1,7 +1,4 @@
 import React, { useState, useEffect, useMemo } from "react";
-// Групповые заголовки для статей
-const GROUP1_LABEL = "Расходы на сертификацию, патентование и метрологию, качество";
-const GROUP2_LABEL = "Общехозяйственные расходы";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -668,44 +665,29 @@ const BudgetTableDemo = () => {
             <summary className="cursor-pointer font-semibold text-lg w-full text-left px-2 py-1 bg-gray-100 border-b hover:bg-gray-200">
               Статьи
             </summary>
-
-            {/* Group 1 */}
-            <div className="mb-4 w-full">
-              <h4 className="font-medium mb-1">{GROUP1_LABEL}</h4>
-              <div className="space-y-2 text-sm text-left">
-                {data
-                  .filter((art) => art.group === "cert")
-                  .map((art) => (
-                    <label key={art.id} className="flex items-center gap-2 w-full">
-                      <input
-                        type="checkbox"
-                        checked={selectedArticles.includes(art.id)}
-                        onChange={() => toggleArticle(art.id)}
-                      />
-                      {art.name}
-                    </label>
-                  ))}
-              </div>
-            </div>
-
-            {/* Group 2 */}
-            <div className="mb-4 w-full">
-              <h4 className="font-medium mb-1">{GROUP2_LABEL}</h4>
-              <div className="space-y-2 text-sm text-left">
-                {data
-                  .filter((art) => art.group === "general")
-                  .map((art) => (
-                    <label key={art.id} className="flex items-center gap-2 w-full">
-                      <input
-                        type="checkbox"
-                        checked={selectedArticles.includes(art.id)}
-                        onChange={() => toggleArticle(art.id)}
-                      />
-                      {art.name}
-                    </label>
-                  ))}
-              </div>
-            </div>
+            {Array.from(new Set(data.map((a) => a.group.code))).map((code) => {
+              const items = data
+                .filter((a) => a.group.code === code)
+                .sort((a, b) => a.position - b.position);
+              const groupName = items[0]?.group.name;
+              return (
+                <div key={code} className="mb-4 w-full">
+                  <h4 className="font-medium mb-1">{groupName}</h4>
+                  <div className="space-y-2 text-sm text-left">
+                    {items.map((art) => (
+                      <label key={art.id} className="flex items-center gap-2 w-full">
+                        <input
+                          type="checkbox"
+                          checked={selectedArticles.includes(art.id)}
+                          onChange={() => toggleArticle(art.id)}
+                        />
+                        {art.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </details>
 
           {/* Year filter */}

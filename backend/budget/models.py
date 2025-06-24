@@ -1,6 +1,18 @@
 from django.db import models
 from django.utils import timezone
 
+class Group(models.Model):
+    """Справочник групп статей бюджета."""
+    code = models.CharField("Код группы", max_length=50, unique=True)
+    name = models.CharField("Наименование группы", max_length=200)
+
+    class Meta:
+        verbose_name = "Группа статьи"
+        verbose_name_plural = "Группы статей"
+
+    def __str__(self):
+        return self.name
+
 class BudgetItem(models.Model):
     """Статья бюджета (ИТ-Инфраструктура, Маркетинг …)"""
     name = models.CharField(max_length=100)
@@ -10,17 +22,11 @@ class BudgetItem(models.Model):
         default=0,
         help_text="Чем меньше значение — выше в списке"
     )
-    # Группа статьи для разделения по категориям
-    GROUP_CHOICES = [
-        ('cert', 'Расходы на сертификацию, патентование и метрологию, качество'),
-        ('general', 'Общехозяйственные расходы'),
-    ]
-    group = models.CharField(
-        'Группа',
-        max_length=50,
-        choices=GROUP_CHOICES,
-        default='cert',
-        help_text='Категория статьи бюджета'
+    group = models.ForeignKey(
+        Group,
+        verbose_name="Группа",
+        related_name="items",
+        on_delete=models.PROTECT
     )
 
     def __str__(self):

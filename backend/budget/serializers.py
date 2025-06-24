@@ -1,10 +1,16 @@
 from rest_framework import serializers
 from .models import BudgetItem, Work, Material, QuarterReserve
+from .models import Group
 
 class MaterialSerializer(serializers.ModelSerializer):
     class Meta:
         model = Material
         fields = ("id", "file", "uploaded_at")
+
+class GroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Group
+        fields = ("id", "code", "name")
 
 class WorkSerializer(serializers.ModelSerializer):
     item = serializers.PrimaryKeyRelatedField(
@@ -12,7 +18,8 @@ class WorkSerializer(serializers.ModelSerializer):
         write_only=True
     )
     materials = MaterialSerializer(many=True, read_only=True)
-    group = serializers.CharField(source="item.group", read_only=True)
+    # Include parent item's group details
+    group = GroupSerializer(source="item.group", read_only=True)
 
     class Meta:
         model = Work
@@ -28,6 +35,7 @@ class WorkSerializer(serializers.ModelSerializer):
         )
 
 class BudgetItemSerializer(serializers.ModelSerializer):
+    group = GroupSerializer(read_only=True)
     works = WorkSerializer(many=True, read_only=True)
 
     class Meta:
