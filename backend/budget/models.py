@@ -4,6 +4,18 @@ from django.utils import timezone
 class BudgetItem(models.Model):
     """Статья бюджета (ИТ-Инфраструктура, Маркетинг …)"""
     name = models.CharField(max_length=100)
+    # Группа статьи для разделения по категориям
+    GROUP_CHOICES = [
+        ('cert', 'Расходы на сертификацию, патентование и метрологию, качество'),
+        ('general', 'Общехозяйственные расходы'),
+    ]
+    group = models.CharField(
+        'Группа',
+        max_length=50,
+        choices=GROUP_CHOICES,
+        default='cert',
+        help_text='Категория статьи бюджета'
+    )
 
     def __str__(self):
         return self.name

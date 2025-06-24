@@ -12,6 +12,7 @@ class WorkSerializer(serializers.ModelSerializer):
         write_only=True
     )
     materials = MaterialSerializer(many=True, read_only=True)
+    group = serializers.CharField(source="item.group", read_only=True)
 
     class Meta:
         model = Work
@@ -23,6 +24,7 @@ class WorkSerializer(serializers.ModelSerializer):
             "actual_accruals", "actual_payments",
             "vat_rate",
             "materials",
+            "group",  # optional: include item group
         )
 
 class BudgetItemSerializer(serializers.ModelSerializer):
@@ -30,7 +32,7 @@ class BudgetItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BudgetItem
-        fields = ("id", "name", "works")
+        fields = ("id", "name", "group", "works")
 
 class ReserveSerializer(serializers.ModelSerializer):
     balance_acc = serializers.SerializerMethodField()
