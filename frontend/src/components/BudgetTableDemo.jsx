@@ -1169,14 +1169,36 @@ const BudgetTableDemo = () => {
                     )}
                     {expanded &&
                       filteredWorks.map((work, wIdx) => {
-                        // calculate overall plan vs fact for this work
+                        // calculate overall plan vs fact for this work, ignoring перенос in plan
                         const planSum =
-                          Object.values(work.accruals || {}).reduce((s, v) => s + v, 0) +
-                          Object.values(work.payments || {}).reduce((s, v) => s + v, 0);
+                          Object.entries(work.accruals || {}).reduce((sum, [m, v]) => {
+                            const status = v?.status || 'действ';
+                            return sum + (status === 'перенос' ? 0 : getAmt(v));
+                          }, 0) +
+                          Object.entries(work.payments || {}).reduce((sum, [m, v]) => {
+                            const status = v?.status || 'действ';
+                            return sum + (status === 'перенос' ? 0 : getAmt(v));
+                          }, 0);
+
                         const factSum =
-                          Object.values(work.actual_accruals || {}).reduce((s, v) => s + v, 0) +
-                          Object.values(work.actual_payments || {}).reduce((s, v) => s + v, 0);
+                          Object.values(work.actual_accruals || {}).reduce((sum, v) => sum + getAmt(v), 0) +
+                          Object.values(work.actual_payments || {}).reduce((sum, v) => sum + getAmt(v), 0);
                         const completionPct = planSum > 0 ? Math.round((factSum / planSum) * 100) : null;
+                        const isEconomyWork = planSum > 0 && factSum > 0 && factSum < planSum;
+                        // determine if work has fact entries for all planned accruals/payments ignoring transfers
+                        const hasAllFactAcc = Object.entries(work.accruals || {}).every(([m, v]) => {
+                          const status = v?.status || "действ";
+                          if (status === "перенос") return true;
+                          const planned = getAmt(v);
+                          return planned <= 0 || (work.actual_accruals && work.actual_accruals[m] != null);
+                        });
+                        const hasAllFactPay = Object.entries(work.payments || {}).every(([m, v]) => {
+                          const status = v?.status || "действ";
+                          if (status === "перенос") return true;
+                          const planned = getAmt(v);
+                          return planned <= 0 || (work.actual_payments && work.actual_payments[m] != null);
+                        });
+                        const hasAllFacts = hasAllFactAcc && hasAllFactPay;
                         return (
                           <tr
                             key={work.id}
@@ -1212,7 +1234,7 @@ const BudgetTableDemo = () => {
                               <div className="text-xs text-gray-500">
                                 {work.year} · {work.responsible || "—"}
                               </div>
-                              {completionPct === 100 && (
+                              {hasAllFacts && (
                                 <CheckCircle
                                   className="absolute top-1 right-1 w-4 h-4 text-emerald-500"
                                 />
@@ -1223,6 +1245,10 @@ const BudgetTableDemo = () => {
                               const planPay = getAmt((work.payments || {})[m]);
                               const factAcc = getAmt((work.actual_accruals || {})[m]);
                               const factPay = getAmt((work.actual_payments || {})[m]);
+                              // economy detection
+                              const planTotal = (showAccruals ? planAcc : 0) + (showPayments ? planPay : 0);
+                              const factTotal = (showAccruals ? factAcc : 0) + (showPayments ? factPay : 0);
+                              const isEconomy = factTotal > 0 && factTotal < planTotal;
                               // show tooltip only if any figure is non‑zero
                               const hasData = planAcc || planPay || factAcc || factPay;
                               const tooltipLines = hasData
@@ -1253,7 +1279,8 @@ const BudgetTableDemo = () => {
                                   key={m}
                                   className={clsx(
                                     "border p-2 text-right",
-                                    m === currentMonthName && "bg-yellow-50"
+                                    m === currentMonthName && "bg-yellow-50",
+
                                   )}
                                   {...(tooltipLines ? { title: tooltipLines } : {})}
                                 >
@@ -1262,6 +1289,11 @@ const BudgetTableDemo = () => {
                                     {statusText && (
                                       <span className="inline-block text-xs italic text-gray-500 bg-yellow-100 px-1 rounded mt-1">
                                         {statusText}
+                                      </span>
+                                    )}
+                                    {isEconomy && (
+                                      <span className="inline-block text-xs italic text-gray-500 bg-green-100 px-1 rounded mt-1">
+                                        Экономия
                                       </span>
                                     )}
                                   </div>
