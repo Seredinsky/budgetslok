@@ -16,7 +16,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Plus, Trash2, Paperclip, X, CheckCircle } from "lucide-react";
+import { Plus, Trash2, Paperclip, X, CheckCircle, Repeat } from "lucide-react";
 import axios from "axios";
 
 import clsx from "clsx";
@@ -30,6 +30,17 @@ const niceFileName = (url, fallback = "файл") => {
   } catch {
     return fallback;
   }
+};
+
+// утилита: извлечь число из записи с учетом amount/status
+const getAmt = (v) => {
+  if (v != null && typeof v === "object") {
+    if ("amount" in v) return v.amount || 0;
+    const keys = Object.keys(v);
+    if (keys.length) return v[keys[0]] || 0;
+    return 0;
+  }
+  return v || 0;
 };
 
 const API = "http://127.0.0.1:8000/api/items/";
@@ -53,12 +64,29 @@ const quarters = ["I кв.", "II кв.", "III кв.", "IV кв."];
 // ──────────── Вспомогательные функции ────────────
 
 const objToRows = (plan, fact = {}) =>
-  Object.entries(plan).map(([m, a]) => ({
-    month: m,
-    amount: String(a),
-    checked: m in fact,
-    actual: m in fact ? String(fact[m]) : "",
-  }));
+  Object.entries(plan).map(([m, a]) => {
+    const rec =
+      a != null && typeof a === "object"
+        ? {
+            amount: getAmt(a),
+            status:
+              a.status ||
+              Object.keys(a).find((k) => k !== "amount") ||
+              "действ",
+          }
+        : { amount: a, status: "действ" };
+    return {
+      month: m,
+      amount: String(rec.amount),
+      status: rec.status,
+      checked: Boolean(fact[m]),
+      actual: String(
+        fact[m] != null && typeof fact[m] === "object"
+          ? fact[m].amount
+          : fact[m] || ""
+      ),
+    };
+  });
 
 const arrToPlan = (rows) =>
   rows.reduce((acc, r) => {
@@ -68,7 +96,9 @@ const arrToPlan = (rows) =>
 
 const arrToFact = (rows) =>
   rows.reduce((acc, r) => {
-    if (r.checked && r.month && r.actual !== "") acc[r.month] = Number(r.actual);
+    if (r.checked && r.month && r.actual !== "") {
+      acc[r.month] = { amount: Number(r.actual), status: "действ" };
+    }
     return acc;
   }, {});
 
@@ -126,16 +156,16 @@ const BudgetTableDemo = () => {
         }
 
         Object.entries(w.accruals || {}).forEach(([m, v]) => {
-          if (visibleMonths.includes(m)) planAcc += v;
+          if (visibleMonths.includes(m)) planAcc += getAmt(v);
         });
         Object.entries(w.payments || {}).forEach(([m, v]) => {
-          if (visibleMonths.includes(m)) planPay += v;
+          if (visibleMonths.includes(m)) planPay += getAmt(v);
         });
         Object.entries(w.actual_accruals || {}).forEach(([m, v]) => {
-          if (visibleMonths.includes(m)) factAcc += v;
+          if (visibleMonths.includes(m)) factAcc += getAmt(v);
         });
         Object.entries(w.actual_payments || {}).forEach(([m, v]) => {
-          if (visibleMonths.includes(m)) factPay += v;
+          if (visibleMonths.includes(m)) factPay += getAmt(v);
         });
       });
     });
@@ -318,10 +348,10 @@ const BudgetTableDemo = () => {
       setSelectedArticles(data.map((it) => it.id));  // выбрать все по умолчанию
       setExpandedArticles(data.map((it) => it.id)); // раскрыть все по умолчанию
     });
-      // загружаем резервы
+    // загружаем резервы
     axios
-    .get("http://127.0.0.1:8000/api/reserves/")
-    .then(({ data }) => setReserves(data));
+      .get("http://127.0.0.1:8000/api/reserves/")
+      .then(({ data }) => setReserves(data));
   }, []);
   
   // переключение раскрытия конкретной статьи
@@ -345,6 +375,11 @@ const BudgetTableDemo = () => {
   const [useReserve, setUseReserve] = useState(false);
   // per-quarter write-off flags
   const [reserveChecks, setReserveChecks] = useState({});
+  // per-month cancel/transfer flags for accruals and payments
+  const [cancelAccrualChecks, setCancelAccrualChecks] = useState({});
+  const [transferAccrualChecks, setTransferAccrualChecks] = useState({});
+  const [cancelPaymentChecks, setCancelPaymentChecks] = useState({});
+  const [transferPaymentChecks, setTransferPaymentChecks] = useState({});
 
   // form fields
   const [workName, setWorkName] = useState("");
@@ -452,6 +487,23 @@ const BudgetTableDemo = () => {
       setAccrualRows(objToRows(w.accruals, w.actual_accruals));
       setPaymentRows(objToRows(w.payments, w.actual_payments));
       setVatRate(w.vat_rate || 0);
+      // initialize separate cancel/transfer flags for accruals and payments
+      const initCancelAcc = {};
+      const initTransferAcc = {};
+      objToRows(w.accruals, w.actual_accruals).forEach((r) => {
+        initCancelAcc[r.month] = r.status === "отмена";
+        initTransferAcc[r.month] = r.status === "перенос";
+      });
+      const initCancelPay = {};
+      const initTransferPay = {};
+      objToRows(w.payments, w.actual_payments).forEach((r) => {
+        initCancelPay[r.month] = r.status === "отмена";
+        initTransferPay[r.month] = r.status === "перенос";
+      });
+      setCancelAccrualChecks(initCancelAcc);
+      setTransferAccrualChecks(initTransferAcc);
+      setCancelPaymentChecks(initCancelPay);
+      setTransferPaymentChecks(initTransferPay);
     }
 
     // initialize reserve toggle:
@@ -469,8 +521,39 @@ const BudgetTableDemo = () => {
     quarters.forEach((_, i) => { initChecks[i] = false; });
     setReserveChecks(initChecks);
 
+    if (workIdx === null) {
+      // for new work, reset transfer and cancel checks
+      const initTransfersAcc = {};
+      const initTransfersPay = {};
+      const initCancelsAcc = {};
+      const initCancelsPay = {};
+      visibleMonths.forEach((m) => {
+        initTransfersAcc[m] = false;
+        initTransfersPay[m] = false;
+        initCancelsAcc[m] = false;
+        initCancelsPay[m] = false;
+      });
+      setTransferAccrualChecks(initTransfersAcc);
+      setTransferPaymentChecks(initTransfersPay);
+      setCancelAccrualChecks(initCancelsAcc);
+      setCancelPaymentChecks(initCancelsPay);
+    }
+
     setDialogOpen(true);
   };
+
+  // helper to build accrual/payment records with status
+  const buildRecords = (rows, cancelMap, transferMap) =>
+    rows.reduce((acc, r) => {
+      if (!r.month) return acc;
+      const status = cancelMap[r.month]
+        ? "отмена"
+        : transferMap[r.month]
+        ? "перенос"
+        : "действ";
+      acc[r.month] = { amount: Number(r.amount), status };
+      return acc;
+    }, {});
 
   // save
   const handleSave = async () => {
@@ -481,10 +564,14 @@ const BudgetTableDemo = () => {
       id: workIdx === null ? undefined : article.works[workIdx].id,
       item: workArticleId, // backend needs parent article id
       name: workName || "Работа",
-      accruals: arrToPlan(accrualRows),
-      payments: arrToPlan(paymentRows),
-      actual_accruals: arrToFact(accrualRows),
-      actual_payments: arrToFact(paymentRows),
+      accruals: buildRecords(accrualRows, cancelAccrualChecks, transferAccrualChecks),
+      payments: buildRecords(paymentRows, cancelPaymentChecks, transferPaymentChecks),
+      actual_accruals: arrToFact(
+        accrualRows.filter((r) => !cancelAccrualChecks[r.month])
+      ),
+      actual_payments: arrToFact(
+        paymentRows.filter((r) => !cancelPaymentChecks[r.month])
+      ),
       justification,
       comment,
       year,
@@ -560,6 +647,7 @@ const BudgetTableDemo = () => {
         setReserves(fresh);
       }
 
+
       setDialogOpen(false);
     } catch (err) {
       console.error(err);
@@ -616,10 +704,10 @@ const BudgetTableDemo = () => {
         const fa = w.actual_accruals || {};
         const fp = w.actual_payments || {};
 
-        acc += a[m] || 0;
-        pay += p[m] || 0;
-        fAcc += fa[m] || 0;
-        fPay += fp[m] || 0;
+        acc += getAmt(a[m]);
+        pay += getAmt(p[m]);
+        fAcc += getAmt(fa[m]);
+        fPay += getAmt(fp[m]);
       });
       monthTotals[m] = { acc, pay, fAcc, fPay };
 
@@ -1131,10 +1219,10 @@ const BudgetTableDemo = () => {
                               )}
                             </td>
                             {visibleMonths.map((m) => {
-                              const planAcc = (work.accruals || {})[m] || 0;
-                              const planPay = (work.payments || {})[m] || 0;
-                              const factAcc = (work.actual_accruals || {})[m] || 0;
-                              const factPay = (work.actual_payments || {})[m] || 0;
+                              const planAcc = getAmt((work.accruals || {})[m]);
+                              const planPay = getAmt((work.payments || {})[m]);
+                              const factAcc = getAmt((work.actual_accruals || {})[m]);
+                              const factPay = getAmt((work.actual_payments || {})[m]);
                               // show tooltip only if any figure is non‑zero
                               const hasData = planAcc || planPay || factAcc || factPay;
                               const tooltipLines = hasData
@@ -1151,6 +1239,15 @@ const BudgetTableDemo = () => {
                                     .filter(Boolean)
                                     .join("\n")
                                 : null;
+                              // statusText computation (new location)
+                              const statusParts = [];
+                              if (showAccruals && work.accruals?.[m]?.status && work.accruals[m].status !== "действ") {
+                                statusParts.push(work.accruals[m].status === "отмена" ? "Отмена" : "Перенос");
+                              }
+                              if (showPayments && work.payments?.[m]?.status && work.payments[m].status !== "действ") {
+                                statusParts.push(work.payments[m].status === "отмена" ? "Отмена" : "Перенос");
+                              }
+                              const statusText = statusParts.join(", ");
                               return (
                                 <td
                                   key={m}
@@ -1160,7 +1257,14 @@ const BudgetTableDemo = () => {
                                   )}
                                   {...(tooltipLines ? { title: tooltipLines } : {})}
                                 >
-                                  {renderCell(planAcc, planPay, factAcc, factPay)}
+                                  <div className={clsx("flex flex-col items-end leading-tight", statusText && "italic text-gray-500")}>
+                                    {renderCell(planAcc, planPay, factAcc, factPay)}
+                                    {statusText && (
+                                      <span className="inline-block text-xs italic text-gray-500 bg-yellow-100 px-1 rounded mt-1">
+                                        {statusText}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                               );
                             })}
@@ -1382,10 +1486,17 @@ const BudgetTableDemo = () => {
               <section>
                 <h3 className="font-semibold mb-2">Оплаты (план / факт)</h3>
                 {paymentRows.map((row, idx) => (
-                  <div key={idx} className="flex flex-wrap items-center gap-2 mb-2">
+                  <div
+                    key={idx}
+                    className={clsx(
+                      "flex flex-wrap items-center gap-2 mb-2",
+                      (transferPaymentChecks[row.month] || cancelPaymentChecks[row.month]) && "opacity-50"
+                    )}
+                  >
                     <Select
                       value={row.month}
                       onValueChange={(val) => updateRow(setPaymentRows, idx, "month", val)}
+                      disabled={transferPaymentChecks[row.month] || cancelPaymentChecks[row.month]}
                     >
                       <SelectTrigger className="w-24">
                         <SelectValue placeholder="Мес." />
@@ -1413,6 +1524,7 @@ const BudgetTableDemo = () => {
                           : val;
                         updateRow(setAccrualRows, idx, "amount", net);
                       }}
+                      disabled={transferPaymentChecks[row.month] || cancelPaymentChecks[row.month]}
                     />
                     <label className="flex items-center text-sm">
                       <input
@@ -1420,6 +1532,7 @@ const BudgetTableDemo = () => {
                         className="mr-1"
                         checked={row.checked}
                         onChange={(e) => updateRow(setPaymentRows, idx, "checked", e.target.checked)}
+                        disabled={transferPaymentChecks[row.month] || cancelPaymentChecks[row.month]}
                       />
                       Факт
                     </label>
@@ -1430,25 +1543,82 @@ const BudgetTableDemo = () => {
                         className="w-28"
                         value={row.actual}
                         onChange={(e) => updateRow(setPaymentRows, idx, "actual", e.target.value)}
+                        disabled={transferPaymentChecks[row.month] || cancelPaymentChecks[row.month]}
                       />
                     )}
-                    <Button size="icon" variant="ghost" onClick={() => delRow(setPaymentRows, idx)}>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        delRow(setPaymentRows, idx);
+                        delRow(setAccrualRows, idx);
+                      }}
+                      disabled={transferPaymentChecks[row.month] || cancelPaymentChecks[row.month]}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title={cancelPaymentChecks[row.month] ? "Восстановить" : "Отмена"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCancelPaymentChecks((prev) => ({
+                          ...prev,
+                          [row.month]: !prev[row.month],
+                        }));
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title={transferPaymentChecks[row.month] ? "Вернуть перенос" : "Перенос"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTransferPaymentChecks((prev) => ({
+                          ...prev,
+                          [row.month]: !prev[row.month],
+                        }));
+                      }}
+                    >
+                      <Repeat className="w-4 h-4" />
+                    </Button>
+                    {cancelPaymentChecks[row.month] && (
+                      <span className="italic text-gray-500 ml-2">Отмена</span>
+                    )}
+                    {transferPaymentChecks[row.month] && !cancelPaymentChecks[row.month] && (
+                      <span className="italic text-gray-500 ml-2">Перенос</span>
+                    )}
                   </div>
                 ))}
-                <Button variant="secondary" size="sm" onClick={() => addRow(setPaymentRows)}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    addRow(setPaymentRows);
+                    addRow(setAccrualRows);
+                  }}
+                >
                   <Plus className="w-4 h-4 mr-1" /> Добавить строку
                 </Button>
               </section>
-                            {/* ACCRUALS */}
+              {/* ACCRUALS */}
               <section>
                 <h3 className="font-semibold mb-2">Начисления (план / факт)</h3>
                 {accrualRows.map((row, idx) => (
-                  <div key={idx} className="flex flex-wrap items-center gap-2 mb-2">
+                  <div
+                    key={idx}
+                    className={clsx(
+                      "flex flex-wrap items-center gap-2 mb-2",
+                      (transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]) && "opacity-50"
+                    )}
+                  >
                     <Select
                       value={row.month}
                       onValueChange={(val) => updateRow(setAccrualRows, idx, "month", val)}
+                      disabled={transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]}
                     >
                       <SelectTrigger className="w-24">
                         <SelectValue placeholder="Мес." />
@@ -1467,6 +1637,7 @@ const BudgetTableDemo = () => {
                       className="w-28"
                       value={row.amount}
                       onChange={(e) => updateRow(setAccrualRows, idx, "amount", e.target.value)}
+                      disabled={transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]}
                     />
                     <label className="flex items-center text-sm">
                       <input
@@ -1474,6 +1645,7 @@ const BudgetTableDemo = () => {
                         className="mr-1"
                         checked={row.checked}
                         onChange={(e) => updateRow(setAccrualRows, idx, "checked", e.target.checked)}
+                        disabled={transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]}
                       />
                       Факт
                     </label>
@@ -1484,11 +1656,46 @@ const BudgetTableDemo = () => {
                         className="w-28"
                         value={row.actual}
                         onChange={(e) => updateRow(setAccrualRows, idx, "actual", e.target.value)}
+                        disabled={transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]}
                       />
                     )}
-                    <Button size="icon" variant="ghost" onClick={() => delRow(setAccrualRows, idx)}>
+                    <Button size="icon" variant="ghost" onClick={() => delRow(setAccrualRows, idx)} disabled={transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title={cancelAccrualChecks[row.month] ? "Восстановить" : "Отмена"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCancelAccrualChecks((prev) => ({
+                          ...prev,
+                          [row.month]: !prev[row.month],
+                        }));
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title={transferAccrualChecks[row.month] ? "Вернуть перенос" : "Перенос"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTransferAccrualChecks((prev) => ({
+                          ...prev,
+                          [row.month]: !prev[row.month],
+                        }));
+                      }}
+                    >
+                      <Repeat className="w-4 h-4" />
+                    </Button>
+                    {cancelAccrualChecks[row.month] && (
+                      <span className="italic text-gray-500 ml-2">Отмена</span>
+                    )}
+                    {transferAccrualChecks[row.month] && !cancelAccrualChecks[row.month] && (
+                      <span className="italic text-gray-500 ml-2">Перенос</span>
+                    )}
                   </div>
                 ))}
                 <Button variant="secondary" size="sm" onClick={() => addRow(setAccrualRows)}>
@@ -1541,7 +1748,6 @@ const BudgetTableDemo = () => {
                     );
                   })}
                 </section>
-
               )}
             </div>
             <DialogFooter className="mt-4">
