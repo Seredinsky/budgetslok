@@ -32,7 +32,7 @@ class BudgetItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BudgetItem
-        fields = ("id", "name", "group", "works")
+        fields = ("id", "name", "position", "group", "works")
 
 class ReserveSerializer(serializers.ModelSerializer):
     balance_acc = serializers.SerializerMethodField()

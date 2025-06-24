@@ -664,45 +664,49 @@ const BudgetTableDemo = () => {
             </button>
           </div>
 
-          <h3 className="font-semibold mb-3">Статьи</h3>
+          <details className="mb-4 border rounded">
+            <summary className="cursor-pointer font-semibold text-lg w-full text-left px-2 py-1 bg-gray-100 border-b hover:bg-gray-200">
+              Статьи
+            </summary>
 
-          {/* Group 1 */}
-          <div className="mb-4 w-full">
-            <h4 className="font-medium mb-1">{GROUP1_LABEL}</h4>
-            <div className="space-y-2 text-sm text-left">
-              {data
-                .filter((art) => art.group === "cert")
-                .map((art) => (
-                  <label key={art.id} className="flex items-center gap-2 w-full">
-                    <input
-                      type="checkbox"
-                      checked={selectedArticles.includes(art.id)}
-                      onChange={() => toggleArticle(art.id)}
-                    />
-                    {art.name}
-                  </label>
-                ))}
+            {/* Group 1 */}
+            <div className="mb-4 w-full">
+              <h4 className="font-medium mb-1">{GROUP1_LABEL}</h4>
+              <div className="space-y-2 text-sm text-left">
+                {data
+                  .filter((art) => art.group === "cert")
+                  .map((art) => (
+                    <label key={art.id} className="flex items-center gap-2 w-full">
+                      <input
+                        type="checkbox"
+                        checked={selectedArticles.includes(art.id)}
+                        onChange={() => toggleArticle(art.id)}
+                      />
+                      {art.name}
+                    </label>
+                  ))}
+              </div>
             </div>
-          </div>
 
-          {/* Group 2 */}
-          <div className="mb-4 w-full">
-            <h4 className="font-medium mb-1">{GROUP2_LABEL}</h4>
-            <div className="space-y-2 text-sm text-left">
-              {data
-                .filter((art) => art.group === "general")
-                .map((art) => (
-                  <label key={art.id} className="flex items-center gap-2 w-full">
-                    <input
-                      type="checkbox"
-                      checked={selectedArticles.includes(art.id)}
-                      onChange={() => toggleArticle(art.id)}
-                    />
-                    {art.name}
-                  </label>
-                ))}
+            {/* Group 2 */}
+            <div className="mb-4 w-full">
+              <h4 className="font-medium mb-1">{GROUP2_LABEL}</h4>
+              <div className="space-y-2 text-sm text-left">
+                {data
+                  .filter((art) => art.group === "general")
+                  .map((art) => (
+                    <label key={art.id} className="flex items-center gap-2 w-full">
+                      <input
+                        type="checkbox"
+                        checked={selectedArticles.includes(art.id)}
+                        onChange={() => toggleArticle(art.id)}
+                      />
+                      {art.name}
+                    </label>
+                  ))}
+              </div>
             </div>
-          </div>
+          </details>
 
           {/* Year filter */}
           <div className="mb-3">
@@ -927,6 +931,7 @@ const BudgetTableDemo = () => {
                 (respFilter === "all" || w.responsible === respFilter)
             )
         )
+        .sort((a, b) => a.position - b.position)
         .map((article, aIdx) => {
           // find index of this article in full data array
           const realArticleIdx = data.findIndex((a) => a.id === article.id);
@@ -976,13 +981,13 @@ const BudgetTableDemo = () => {
                     <tr className="bg-gray-100">
                       <th
                         rowSpan={2}
-                        className="border p-2 bg-gray-100 w-48 max-w-[12rem] text-center sticky top-0 z-10"
+                        className="border p-2 bg-gray-100 w-48 max-w-[12rem] text-left sticky top-0 z-10"
                       >
                         Статья
                       </th>
                       <th
                         rowSpan={2}
-                        className="border p-2 bg-gray-100 text-center sticky top-0 z-10 w-56 max-w-[14rem]"
+                        className="border p-2 bg-gray-100 text-left sticky top-0 z-10 w-56 max-w-[14rem]"
                       >
                         Работа
                       </th>

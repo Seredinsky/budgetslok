@@ -4,6 +4,12 @@ from django.utils import timezone
 class BudgetItem(models.Model):
     """Статья бюджета (ИТ-Инфраструктура, Маркетинг …)"""
     name = models.CharField(max_length=100)
+    # Порядок отображения статей
+    position = models.PositiveIntegerField(
+        "Позиция",
+        default=0,
+        help_text="Чем меньше значение — выше в списке"
+    )
     # Группа статьи для разделения по категориям
     GROUP_CHOICES = [
         ('cert', 'Расходы на сертификацию, патентование и метрологию, качество'),
@@ -19,6 +25,9 @@ class BudgetItem(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        ordering = ["position"]
 
 
 class Work(models.Model):

@@ -13,7 +13,10 @@ class WorkInline(admin.TabularInline):
 
 @admin.register(BudgetItem)
 class BudgetItemAdmin(admin.ModelAdmin):
-    list_display = ("name", "group")
+    list_display = ("position", "name", "group")
+    list_display_links = ("name",)
+    list_editable = ("position",)
+    ordering = ("position",)
     list_filter = ("group",)
     inlines = [WorkInline]
 
