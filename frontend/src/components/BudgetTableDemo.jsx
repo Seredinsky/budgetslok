@@ -943,21 +943,9 @@ const BudgetTableDemo = () => {
             + Новая работа
           </Button>
         </div>
-        {activeFilterChips.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-4">
-            {activeFilterChips.map((txt, idx) => (
-              <span
-                key={idx}
-                className="inline-block bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs"
-              >
-                {txt}
-              </span>
-            ))}
-          </div>
-        )}
 
 
-      <div className="mb-4 flex items-center gap-4">
+      <div className="sticky top-0 bg-white z-20 mb-4 flex items-center gap-4">
         <div className="inline-flex rounded overflow-hidden border">
           {["acc", "pay", "both"].map((m) => (
             <button
@@ -988,6 +976,18 @@ const BudgetTableDemo = () => {
             </button>
           ))}
         </div>
+        {activeFilterChips.length > 0 && (
+          <div className="flex flex-wrap gap-2 ml-auto">
+            {activeFilterChips.map((txt, idx) => (
+              <span
+                key={idx}
+                className="inline-block bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs"
+              >
+                {txt}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ---------- TABLE ---------- */}
