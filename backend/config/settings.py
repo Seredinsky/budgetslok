@@ -163,7 +163,12 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # медиа‑файлы (загруженные пользователями)
 MEDIA_URL = '/materials/'
-MEDIA_ROOT = BASE_DIR / "materials"
+media_dir_env = os.environ.get('MEDIA_DIR')
+if media_dir_env:
+    MEDIA_ROOT = Path(media_dir_env)
+else:
+    data_dir = os.environ.get('DATA_DIR', '/data')
+    MEDIA_ROOT = Path(data_dir) / 'materials'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
