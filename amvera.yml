@@ -17,10 +17,16 @@ run:
     - name: DEBUG
       value: "0"
     - name: SECRET_KEY
-      value: ${SECRET_KEY}        # подтянется из Secrets
+      value: "${SECRET_KEY}"        # подтянется из Secrets
     - name: ALLOWED_HOSTS
       value: bugetslok-seredinsky.amvera.io
     - name: CSRF_TRUSTED_ORIGINS
+      value: https://bugetslok-seredinsky.amvera.io
+    - name: SESSION_COOKIE_SECURE
+      value: "1"
+    - name: CSRF_COOKIE_SECURE
+      value: "1"
+    - name: VITE_BACKEND_ORIGIN
       value: https://bugetslok-seredinsky.amvera.io
   healthcheck:
     path: /api/
