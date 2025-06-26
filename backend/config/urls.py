@@ -30,8 +30,12 @@ urlpatterns = [
     path("api/users/me/", CurrentUserView.as_view(), name="api_me"),
     path("api/", include(router.urls)),
     path("health/", lambda request: HttpResponse("ok"), name="health"),
-    # React single‑page app – return index.html for any unmatched route
-    re_path(r"^(?:.*)/?$", TemplateView.as_view(template_name="index.html"), name="spa"),
+    # Serve React app, but exclude admin and API paths
+    re_path(
+        r'^(?!admin/|api/).*$',
+        TemplateView.as_view(template_name="react/index.html"),
+        name="react-catchall"
+    ),
 ]
 
 # Раздаём загруженные файлы в режиме DEBUG
