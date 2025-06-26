@@ -22,7 +22,7 @@ run:
   # Переменные окружения для Django / React
   env:
     - name: DEBUG
-      value: "0"
+      value: "1"
     - name: SECRET_KEY           # ← подтянется из секрета в UI
       valueFrom:
         secretKeyRef:
