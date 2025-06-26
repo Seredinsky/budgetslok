@@ -103,10 +103,19 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+#
+# Database configuration: support external DATA_DIR or DB_PATH
+db_path_env = os.environ.get('DB_PATH')
+if db_path_env:
+    sqlite_path = Path(db_path_env)
+else:
+    data_dir = os.environ.get('DATA_DIR', '/data')
+    sqlite_path = Path(data_dir) / 'db.sqlite3'
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': str(sqlite_path),
     }
 }
 
