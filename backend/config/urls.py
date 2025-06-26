@@ -30,18 +30,11 @@ urlpatterns = [
     path("api/users/me/", CurrentUserView.as_view(), name="api_me"),
     path("api/", include(router.urls)),
     path("health/", lambda request: HttpResponse("ok"), name="health"),
+    # React single‑page app – return index.html for any unmatched route
+    re_path(r"^(?:.*)/?$", TemplateView.as_view(template_name="index.html"), name="spa"),
 ]
 
 # Serve media files at MEDIA_URL
 urlpatterns += static(
     settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
 )
-
-# Serve React SPA for all non-admin, non-API, non-media routes
-urlpatterns += [
-    re_path(
-        r'^(?!admin/|api/|materials/).*$',
-        TemplateView.as_view(template_name="react/index.html"),
-        name='react-catchall'
-    ),
-]
