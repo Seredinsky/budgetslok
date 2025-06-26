@@ -16,15 +16,16 @@ RUN npm run build          # → /frontend/dist
 
 ########################  final image  ########################
 FROM python-base AS final
-WORKDIR /app               # уже /app
 
-# 1. Django-код — без вложенной папки
+WORKDIR /app
+
+# 1. Копируем содержимое backend (а не папку целиком)
 COPY backend/ /app/
 
-# 2. React-билд → static/react
+# 2. Копируем React-билд
 COPY --from=react-build /frontend/dist /app/static/react
 
-# 3. collectstatic
+# 3. Собираем статику
 RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
