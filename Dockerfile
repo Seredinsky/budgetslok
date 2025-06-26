@@ -16,12 +16,17 @@ RUN npm run build          # → /frontend/dist
 
 ########################  final image  ########################
 FROM python-base AS final
-# 1. Django-код
-COPY backend /app
+WORKDIR /app               # уже /app
+
+# 1. Django-код — без вложенной папки
+COPY backend/ /app/
+
 # 2. React-билд → static/react
 COPY --from=react-build /frontend/dist /app/static/react
+
 # 3. collectstatic
 RUN python manage.py collectstatic --noinput
+
 EXPOSE 8000
 CMD ["gunicorn", "-b", "0.0.0.0:8000", "config.wsgi:application", \
      "--workers=3", "--max-requests=500", "--timeout=60"]
