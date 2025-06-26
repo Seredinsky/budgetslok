@@ -23,9 +23,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-q0wmqe9u18+wqt&b1a&9wg=0!3l+$s@g(zl6sj0-wtm9++96hb'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False  # включайте True только локально
 
-ALLOWED_HOSTS = []
+# Замените на свои реальные хосты/домен при деплое
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "budget.example.com"]
 
 
 # Application definition
@@ -72,6 +73,30 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+
+# Django REST Framework — обычные сессии
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework.authentication.SessionAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
+}
+
+# --- Безопасность cookie ---
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = "Lax"
+
+# Разрешаем браузеру отправлять sessionid/csrftoken с фронта
+CORS_ALLOW_CREDENTIALS = True
+
+# доверяем фронтовому домену для CSRF‑cookie (Django 5.2+ требует https://)
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -130,6 +155,16 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+LOGIN_URL = "/api/login/"
+LOGIN_REDIRECT_URL = "/"
+
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",   # Vite по умолчанию
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
+
+# --- Заголовки безопасности ---
+SECURE_HSTS_SECONDS = 31536000  # год
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = "DENY"

@@ -17,9 +17,13 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Plus, Trash2, Paperclip, X, CheckCircle, Repeat } from "lucide-react";
-import axios from "axios";
+import { api as axios } from "@/api/axios";
 
 import clsx from "clsx";
+import { useAuth } from "@/auth/AuthContext";
+
+// URL бэкенда для скачивания файлов; задаётся через .env или по умолчанию localhost:8000
+const BACKEND_ORIGIN = import.meta.env.VITE_BACKEND_ORIGIN || "http://127.0.0.1:8000";
 
 // утилита: извлечь красивое имя файла из URL (decodeURIComponent последнего сегмента)
 const niceFileName = (url, fallback = "файл") => {
@@ -43,8 +47,8 @@ const getAmt = (v) => {
   return v || 0;
 };
 
-const API = "http://127.0.0.1:8000/api/items/";
-const MATERIALS_API = "http://127.0.0.1:8000/api/materials/";
+const API = "items/";
+const MATERIALS_API = "materials/";
 
 /**
  * BudgetTableDemo.jsx – рабочая версия с поддержкой материалов
@@ -107,6 +111,13 @@ const BudgetTableDemo = () => {
   // table state
   // имя текущего месяца (по индексам в monthKeys)
   const currentMonthName = monthKeys[new Date().getMonth()];
+  const { logout, user } = useAuth();          // выход
+  const [users, setUsers] = useState([]);      // справочник
+  const userName = (uid) => {
+    const u = users.find((x) => String(x.id) === String(uid));
+    return u ? `${u.first_name} ${u.last_name}`.trim() || u.username || uid : uid;
+  };
+
   const [data, setData] = useState([]);
   const [reserves, setReserves] = useState([]);   // квартальные резервы
 
@@ -150,7 +161,7 @@ const BudgetTableDemo = () => {
       article.works.forEach((w) => {
         if (
           (yearFilter !== "all" && String(w.year) !== yearFilter) ||
-          (respFilter !== "all" && w.responsible !== respFilter)
+          (respFilter !== "all" && String(w.responsible) !== String(respFilter))
         ) {
           return;
         }
@@ -203,7 +214,7 @@ const BudgetTableDemo = () => {
     if (yearFilter !== "all") chips.push(`Год: ${yearFilter}`);
 
     // ответственный
-    if (respFilter !== "all") chips.push(`Ответственный: ${respFilter}`);
+    if (respFilter !== "all") chips.push(`Ответственный: ${userName(respFilter)}`);
 
     // кварталы
     if (!showQuarterTotals.every(Boolean)) {
@@ -220,11 +231,8 @@ const BudgetTableDemo = () => {
     new Set(data.flatMap((a) => a.works.map((w) => w.year)))
   ).sort();
 
-  const allResponsibles = Array.from(
-    new Set(
-      data.flatMap((a) => a.works.map((w) => w.responsible).filter(Boolean))
-    )
-  ).sort();
+  // список ответственных из справочника users
+  const allResponsibles = users.map((u) => ({ id: u.id, name: userName(u.id) }));
 
   // вывод значения с учётом флагов План/Факт и Н/О
   const renderCell = (planAcc = 0, planPay = 0, factAcc = 0, factPay = 0) => {
@@ -350,8 +358,10 @@ const BudgetTableDemo = () => {
     });
     // загружаем резервы
     axios
-      .get("http://127.0.0.1:8000/api/reserves/")
+      .get("reserves/")
       .then(({ data }) => setReserves(data));
+    // загружаем пользователей
+    axios.get("users/").then(({ data }) => setUsers(data));
   }, []);
   
   // переключение раскрытия конкретной статьи
@@ -583,10 +593,10 @@ const BudgetTableDemo = () => {
     try {
       let response;
       if (workIdx === null) {
-        response = await axios.post("http://127.0.0.1:8000/api/works/", payload);
+        response = await axios.post("works/", payload);
       } else {
         response = await axios.put(
-          `http://127.0.0.1:8000/api/works/${payload.id}/`,
+          `works/${payload.id}/`,
           payload
         );
       }
@@ -636,14 +646,14 @@ const BudgetTableDemo = () => {
               const reserve = findReserve(workArticleId, year, idx + 1);
               if (reserve) {
                 await axios.post(
-                  `http://127.0.0.1:8000/api/reserves/${reserve.id}/write_off/`,
+                  `reserves/${reserve.id}/write_off/`,
                   { acc: sumAcc, pay: sumPay }
                 );
               }
             })
         );
         // refresh reserves
-        const { data: fresh } = await axios.get("http://127.0.0.1:8000/api/reserves/");
+        const { data: fresh } = await axios.get("reserves/");
         setReserves(fresh);
       }
 
@@ -804,9 +814,9 @@ const BudgetTableDemo = () => {
               className="w-full border rounded text-sm p-1"
             >
               <option value="all">Все</option>
-              {allResponsibles.map((r) => (
-                <option key={r} value={r}>
-                  {r}
+              {allResponsibles.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
                 </option>
               ))}
             </select>
@@ -847,9 +857,23 @@ const BudgetTableDemo = () => {
             <path d="M3 6h14M3 10h14M3 14h14" stroke="#333" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </button>
-        <h1 className="text-2xl font-bold mb-4">Бюджет Службы обеспечения качества</h1>
+        <div className="relative mb-4">
+          <h1 className="text-2xl font-bold absolute left-1/2 -translate-x-1/2 text-center">
+            Бюджет Службы обеспечения качества
+          </h1>
+          <button
+            onClick={logout}
+            className="absolute right-0 border rounded px-3 py-1 text-sm bg-white hover:bg-gray-50"
+          >
+            Выйти&nbsp;(
+              {user
+                ? `${user.first_name} ${user.last_name}`.trim() || user.username
+                : "user"}
+            )
+          </button>
+        </div>
         {/* summary card */}
-        <div className="mb-4 flex flex-wrap items-center gap-4">
+        <div className="mb-4 -mt-4 flex flex-wrap items-start gap-4 ml-14">
           <div className="bg-white border rounded shadow-sm p-4 flex items-center gap-6">
             {/* block for Accruals */}
             {(flowMode === "acc" || flowMode === "both") && (
@@ -998,7 +1022,7 @@ const BudgetTableDemo = () => {
             a.works.some(
               (w) =>
                 (yearFilter === "all" || String(w.year) === yearFilter) &&
-                (respFilter === "all" || w.responsible === respFilter)
+                (respFilter === "all" || String(w.responsible) === String(respFilter))
             )
         )
         .sort((a, b) => a.position - b.position)
@@ -1009,7 +1033,7 @@ const BudgetTableDemo = () => {
           const filteredWorks = article.works.filter(
             (w) =>
               (yearFilter === "all" || String(w.year) === yearFilter) &&
-              (respFilter === "all" || w.responsible === respFilter) &&
+              (respFilter === "all" || String(w.responsible) === String(respFilter)) &&
               (allQuartersSelected || workHasVisibleData(w))
           );
           const { monthTotals, quarterTotals } = calcTotals({
@@ -1114,8 +1138,8 @@ const BudgetTableDemo = () => {
                         {/* totals row */}
                         <tr key={`totals-${article.name}`} className="border-t-2 border-gray-400">
                           {/* Removed rowSpan from this td */}
-                          <td className="border p-2 bg-teal-50 text-center font-medium w-56 max-w-[14rem]">
-                            Итого
+                          <td className="border p-2 bg-teal-50 text-left font-medium w-56 max-w-[14rem]">
+                            Итог
                           </td>
                           {visibleMonths.map((m) => (
                             <td
@@ -1232,7 +1256,7 @@ const BudgetTableDemo = () => {
                                 )}
                               </div>
                               <div className="text-xs text-gray-500">
-                                {work.year} · {work.responsible || "—"}
+                                {work.year} · {userName(work.responsible)}
                               </div>
                               {hasAllFacts && (
                                 <CheckCircle
@@ -1307,7 +1331,7 @@ const BudgetTableDemo = () => {
                       <>
                         {/* итоговая строка по статье */}
                         <tr key={`totals-${article.name}`} className="border-t-2 border-gray-400">
-                          <td className="border p-2 bg-teal-50 text-center font-medium w-56 max-w-[14rem]">
+                          <td className="border p-2 bg-teal-50 text-left font-medium w-56 max-w-[14rem]">
                             Итого
                           </td>
                           {visibleMonths.map((m) => (
@@ -1432,14 +1456,22 @@ const BudgetTableDemo = () => {
 
               {/* Responsible */}
               <div>
-                <label className="block text-sm mb-1 font-medium">
-                  Ответственный (ФИО)
-                </label>
-                <Input
-                  value={responsible}
-                  onChange={(e) => setResponsible(e.target.value)}
-                  placeholder="Введите ФИО"
-                />
+                <label className="block text-sm mb-1 font-medium">Ответственный</label>
+                <Select
+                  value={responsible ? String(responsible) : ""}
+                  onValueChange={(v) => setResponsible(Number(v))}
+                >
+                  <SelectTrigger className="w-64">
+                    <SelectValue placeholder="Выберите ответственного" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={String(u.id)}>
+                        {userName(u.id)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Justification */}
@@ -1471,30 +1503,52 @@ const BudgetTableDemo = () => {
                 <h3 className="font-semibold mb-2 flex items-center">
                   <Paperclip className="w-4 h-4 mr-1" /> Материалы
                 </h3>
-                {materials.length > 0 && (
-                  <ul className="list-disc pl-5 mb-2 space-y-1 text-sm">
-                    {materials.map((f, idx) => (
-                      <li key={idx} className="flex items-center gap-2">
-                        {f.file ? (
-                          <a
-                            href={f.file}
-                            download
-                            target="_blank"
-                            rel="noreferrer"
-                            className="underline"
-                          >
-                            {niceFileName(f.file, f.name)}
-                          </a>
-                        ) : (
-                          f.name
-                        )}
-                        <Button size="icon" variant="ghost" onClick={() => removeMaterial(idx)}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                {/* helper to build absolute URL without double "materials/" */}
+                {(() => {
+                  const buildFileUrl = (path) => {
+                    if (!path) return "#";
+                    // абсолютный url — отдаем как есть
+                    if (/^https?:\/\//i.test(path)) return path;
+                    try {
+                      // URL() корректно склеит базу и относительный путь,
+                      // избегая двойных сегментов вроде "/materials/materials/"
+                      return new URL(path.replace(/^\/+/, ""), BACKEND_ORIGIN).href;
+                    } catch {
+                      return `${BACKEND_ORIGIN.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
+                    }
+                  };
+                  return (
+                    <>
+                      {materials.length > 0 && (
+                        <ul className="list-disc pl-5 mb-2 space-y-1 text-sm">
+                          {materials.map((f, idx) => {
+                            const fileUrl = buildFileUrl(f.file);
+                            return (
+                              <li key={idx} className="flex items-center gap-2">
+                                {f.file ? (
+                                  <a
+                                    href={fileUrl}
+                                    download
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="underline"
+                                  >
+                                    {niceFileName(f.file, f.name)}
+                                  </a>
+                                ) : (
+                                  f.name
+                                )}
+                                <Button size="icon" variant="ghost" onClick={() => removeMaterial(idx)}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </>
+                  );
+                })()}
                 <Input type="file" multiple onChange={handleFileAdd} className="cursor-pointer" />
               </section>
               {/* НДС */}

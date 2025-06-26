@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.conf import settings
 
 class Group(models.Model):
     """Справочник групп статей бюджета."""
@@ -53,8 +54,13 @@ class Work(models.Model):
         default=timezone.now().year,
         db_index=True
     )
-    responsible = models.CharField(
-        "Ответственный (ФИО)", max_length=120, blank=True
+    responsible = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Ответственный",
+        related_name="works",
+        on_delete=models.PROTECT,
+        null=True,     # временно допускаем NULL, потом ужесточим
+        blank=True,
     )
     # Ставка НДС: 0%, 5% или 20%
     VAT_CHOICES = [
@@ -68,6 +74,14 @@ class Work(models.Model):
         default=0,
         help_text="Процент НДС"
     )
+
+    class Meta:
+        permissions = [
+            (
+                "change_any_work",
+                "Can edit any work regardless of responsible user",
+            ),
+        ]
 
     def __str__(self):
         return self.name

@@ -22,9 +22,15 @@ class BudgetItemAdmin(admin.ModelAdmin):
 
 @admin.register(Work)
 class WorkAdmin(admin.ModelAdmin):
-    list_display = ("name", "item", "vat_rate")
-    list_filter  = ("item", "vat_rate")
-    search_fields = ("name",)
+    list_display = ("name", "item", "vat_rate", "responsible", "year")
+    list_filter  = ("item", "vat_rate", "responsible", "year")
+    search_fields = (
+        "name",
+        "responsible__username",
+        "responsible__first_name",
+        "responsible__last_name",
+    )
+    autocomplete_fields = ("responsible",)
     inlines = [MaterialInline]
 
 @admin.register(QuarterReserve)

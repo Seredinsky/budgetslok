@@ -3,16 +3,29 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static  # ⬅ медиа в DEBUG
 from rest_framework.routers import DefaultRouter
-from budget.views import BudgetItemViewSet, WorkViewSet, MaterialViewSet, ReserveViewSet
+from budget.views import (
+    BudgetItemViewSet,
+    WorkViewSet,
+    MaterialViewSet,
+    ReserveViewSet,
+    UserViewSet,
+    session_login,
+    session_logout,
+    CurrentUserView,
+)
 
 router = DefaultRouter()
 router.register(r"items", BudgetItemViewSet)
 router.register(r"works", WorkViewSet)
 router.register(r"materials", MaterialViewSet)
 router.register(r"reserves", ReserveViewSet)
+router.register(r"users", UserViewSet, basename="user")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/login/",  session_login, name="api_login"),
+    path("api/logout/", session_logout, name="api_logout"),
+    path("api/users/me/", CurrentUserView.as_view(), name="api_me"),
     path("api/", include(router.urls)),
 ]
 
