@@ -61,7 +61,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / "static" / "react"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -87,15 +87,18 @@ REST_FRAMEWORK = {
 }
 
 # --- Безопасность cookie ---
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SAMESITE = "Lax"
 
 # Разрешаем браузеру отправлять sessionid/csrftoken с фронта
 CORS_ALLOW_CREDENTIALS = True
 
 # доверяем фронтовому домену для CSRF‑cookie (Django 5.2+ требует https://)
-CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:5173").split(",")
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    "CSRF_TRUSTED_ORIGINS",
+    "http://localhost:5173,https://bugetslok-seredinsky.amvera.io",
+).split(",")
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
