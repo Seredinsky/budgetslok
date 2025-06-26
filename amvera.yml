@@ -29,7 +29,7 @@ run:
     - name: VITE_BACKEND_ORIGIN
       value: https://bugetslok-seredinsky.amvera.io
   healthcheck:
-    path: /api/
+    path: /health/
     intervalSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 3
