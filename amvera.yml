@@ -1,0 +1,31 @@
+meta:
+  environment: docker
+  toolchain:
+    name: docker
+
+build:
+  dockerfile: Dockerfile
+  skip: false                     # собирать при каждом push
+
+run:
+  image: null                     # Amvera подставит свежий
+  command: gunicorn -b 0.0.0.0:8000 config.wsgi:application
+  args: ["--workers=3", "--timeout=60"]
+  containerPort: "8000"           # внутренний
+  servicePort: "80"               # внешний
+  env:
+    - name: DEBUG
+      value: "0"
+    - name: SECRET_KEY
+      value: ${SECRET_KEY}        # подтянется из Secrets
+    - name: ALLOWED_HOSTS
+      value: bugetslok-seredinsky.amvera.io
+    - name: CSRF_TRUSTED_ORIGINS
+      value: https://bugetslok-seredinsky.amvera.io
+  healthcheck:
+    path: /api/
+    intervalSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+persistenceMount: /data           # volume, если нужен
