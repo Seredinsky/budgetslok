@@ -1,27 +1,17 @@
-########################  base python  ########################
-FROM python:3.11-slim AS python-base
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
-WORKDIR /app
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir whitenoise
-
-########################  build react  ########################
-FROM node:20-alpine AS react-build
-WORKDIR /frontend
-COPY frontend/package*.json ./
-RUN npm ci
-COPY frontend .
-RUN npm run build          # → /frontend/dist
-
 ########################  final image  ########################
 FROM python-base AS final
-# 1. Django-код
-COPY backend /app
-# 2. React-билд → static/react
-COPY --from=react-build /frontend/dist /app/static/react
-# 3. collectstatic
+
+# ─── copy backend code ───────────────────────────────────────
+WORKDIR /app
+COPY backend /app/backend
+
+# ─── copy React build into static/react ──────────────────────
+COPY --from=react-build /frontend/dist /app/backend/static/react
+
+# ─── collectstatic ───────────────────────────────────────────
+WORKDIR /app/backend
 RUN python manage.py collectstatic --noinput
+
 EXPOSE 8000
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "config.wsgi:application", \
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "backend.config.wsgi:application", \
      "--workers=3", "--max-requests=500", "--timeout=60"]
