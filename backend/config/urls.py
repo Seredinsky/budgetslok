@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.generic import TemplateView
-from django.views.static import serve as static_serve
 from django.http import HttpResponse
 from django.conf import settings
 from django.conf.urls.static import static  # ⬅ медиа в DEBUG
@@ -16,6 +15,7 @@ from budget.views import (
     session_logout,
     CurrentUserView,
 )
+from django.views.static import serve as static_serve
 
 router = DefaultRouter()
 router.register(r"items", BudgetItemViewSet)
@@ -33,21 +33,21 @@ urlpatterns = [
     path("health/", lambda request: HttpResponse("ok"), name="health"),
 ]
 
+# Serve media files at MEDIA_URL
 urlpatterns += static(
     settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
 )
 
-# Backward compatibility: serve files under /materials/materials/…
+# Backward compatibility for URLs like /materials/materials/…
 urlpatterns += [
     re_path(
         r'^materials/materials/(?P<path>.*)$',
         static_serve,
         {'document_root': settings.MEDIA_ROOT / 'materials'},
     ),
-    # React SPA catch-all for non-admin, non-API, non-media routes
-    re_path(
-        r'^(?!admin/|api/|materials/).*$',
-        TemplateView.as_view(template_name="react/index.html"),
-        name='react-catchall'
-    ),
+]
+
+# React single‑page app – return index.html for any unmatched route
+urlpatterns += [
+    re_path(r"^(?:.*)/?$", TemplateView.as_view(template_name="index.html"), name="spa"),
 ]
