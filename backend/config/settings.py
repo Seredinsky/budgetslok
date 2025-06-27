@@ -168,7 +168,7 @@ if media_dir_env:
     MEDIA_ROOT = Path(media_dir_env)
 else:
     data_dir = os.environ.get('DATA_DIR', '/data')
-    MEDIA_ROOT = Path(data_dir) / 'materials'
+    MEDIA_ROOT = Path(data_dir)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
