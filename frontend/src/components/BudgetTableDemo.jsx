@@ -1532,7 +1532,11 @@ const BudgetTableDemo = () => {
                                     target="_blank"
                                     rel="noreferrer"
                                     className="underline"
-                                    onClick={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                      window.open(fileUrl, "_blank");
+                                    }}
                                   >
                                     {niceFileName(f.file, f.name)}
                                   </a>
