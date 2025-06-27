@@ -39,6 +39,15 @@ urlpatterns += static(
     settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
 )
 
+# Serve all media files under /materials/ in production and debug
+urlpatterns += [
+    re_path(
+        r'^materials/(?P<path>.*)$',
+        static_serve,
+        {'document_root': settings.MEDIA_ROOT},
+    ),
+]
+
 # React single‑page app – return index.html for any unmatched route except admin, api, materials
 urlpatterns += [
     re_path(
