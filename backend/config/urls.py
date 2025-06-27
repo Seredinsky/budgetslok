@@ -1,3 +1,4 @@
+from django.views.generic import RedirectView
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.generic import TemplateView
@@ -37,15 +38,6 @@ urlpatterns = [
 urlpatterns += static(
     settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
 )
-
-# Backward compatibility for URLs like /materials/materials/…
-urlpatterns += [
-    re_path(
-        r'^materials/materials/(?P<path>.*)$',
-        static_serve,
-        {'document_root': settings.MEDIA_ROOT / 'materials'},
-    ),
-]
 
 # React single‑page app – return index.html for any unmatched route
 urlpatterns += [
