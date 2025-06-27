@@ -39,7 +39,11 @@ urlpatterns += static(
     settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
 )
 
-# React single‑page app – return index.html for any unmatched route
+# React single‑page app – return index.html for any unmatched route except admin, api, materials
 urlpatterns += [
-    re_path(r"^(?:.*)/?$", TemplateView.as_view(template_name="index.html"), name="spa"),
+    re_path(
+        r'^(?!admin/|api/|materials/).*$',
+        TemplateView.as_view(template_name="index.html"),
+        name="spa"
+    ),
 ]
