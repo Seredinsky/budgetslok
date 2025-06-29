@@ -1273,7 +1273,7 @@ const BudgetTableDemo = () => {
                                 {article.name}
                               </td>
                             )}
-                            <td className="relative border p-2 bg-white text-left w-56 max-w-[14rem] pr-6">
+                            <td className="relative border p-2 bg-white text-left w-56 max-w-[14rem] pr-6 pl-6">
                               {work.name}
                               <div className="text-xs text-gray-500 flex items-center justify-between">
                                 <span>{work.year} · {userName(work.responsible)}</span>
@@ -1282,7 +1282,7 @@ const BudgetTableDemo = () => {
                               {/* feasibility traffic light */}
                               <span
                                 className={clsx(
-                                  "absolute top-2 right-2 w-3 h-3 rounded-full",
+                                  "absolute top-2 left-2 w-3 h-3 rounded-full",
                                   work.feasibility === "green"
                                     ? "bg-green-500"
                                     : work.feasibility === "yellow"
