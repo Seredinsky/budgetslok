@@ -1593,19 +1593,19 @@ const BudgetTableDemo = () => {
                           {materials.map((f, idx) => {
                             const fileUrl = buildFileUrl(f.file);
                             return (
-                              <li key={idx} className="flex items-center gap-2">
+                              <li key={idx} className="flex items-center gap-2 flex-wrap">
                                 {f.file ? (
                                   <a
                                     href={fileUrl}
                                     download
-                                    className="underline"
+                                    className="underline break-all"
                                   >
                                     {niceFileName(f.file, f.name)}
                                   </a>
                                 ) : (
-                                  f.name
+                                  <span className="break-all">{f.name}</span>
                                 )}
-                                <Button size="icon" variant="ghost" onClick={() => removeMaterial(idx)}>
+                                <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); removeMaterial(idx); }}>
                                   <X className="w-4 h-4" />
                                 </Button>
                               </li>
