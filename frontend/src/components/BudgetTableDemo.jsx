@@ -1273,34 +1273,30 @@ const BudgetTableDemo = () => {
                                 {article.name}
                               </td>
                             )}
-                            <td className="border p-2 bg-white text-left w-56 max-w-[14rem] pr-6">
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-start gap-2">
-                                  <span
-                                    className={clsx(
-                                      "flex-none w-3 h-3 rounded-full",
-                                      work.feasibility === "green"
-                                        ? "bg-green-500"
-                                        : work.feasibility === "yellow"
-                                        ? "bg-yellow-500"
-                                        : "bg-red-500"
-                                    )}
-                                  />
-                                  {work.name}
-                                  {work.materials?.length > 0 && (
-                                    <span className="inline-flex items-center text-xs text-gray-500">
-                                      <Paperclip className="w-3 h-3 mr-0.5" />
-                                      {work.materials.length}
-                                    </span>
-                                  )}
-                                </div>
-                                {hasAllFacts && (
-                                  <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                                )}
-                              </div>
+                            <td className="relative border p-2 bg-white text-left w-56 max-w-[14rem] pr-6">
+                              {work.name}
                               <div className="text-xs text-gray-500">
                                 {work.year} · {userName(work.responsible)}
                               </div>
+                              {/* feasibility traffic light */}
+                              <span
+                                className={clsx(
+                                  "absolute top-2 right-2 w-3 h-3 rounded-full",
+                                  work.feasibility === "green"
+                                    ? "bg-green-500"
+                                    : work.feasibility === "yellow"
+                                    ? "bg-yellow-500"
+                                    : "bg-red-500"
+                                )}
+                              />
+                              {/* file count */}
+                              {work.materials?.length > 0 && (
+                                <Paperclip className="absolute top-2 right-8 w-3 h-3 text-gray-500" />
+                              )}
+                              {/* completion check */}
+                              {hasAllFacts && (
+                                <CheckCircle className="absolute top-2 right-12 w-4 h-4 text-emerald-500" />
+                              )}
                             </td>
                             {visibleMonths.map((m) => {
                               const planAcc = getAmt((work.accruals || {})[m]);
