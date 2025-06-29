@@ -1503,13 +1503,14 @@ const BudgetTableDemo = () => {
                 <h3 className="font-semibold mb-2 flex items-center">
                   <Paperclip className="w-4 h-4 mr-1" /> Материалы
                 </h3>
-                {/* helper to build file URL as relative path */}
+                {/* helper to build file URL as absolute path on current origin */}
                 {(() => {
                   const buildFileUrl = (path) => {
                     if (!path) return "#";
                     if (/^https?:\/\//i.test(path)) return path;
-                    // serve via current origin to avoid mixed‐content redirects
-                    return path.startsWith("/") ? path : `/${path}`;
+                    // build absolute URL on current origin to enforce HTTPS
+                    const suffix = path.startsWith("/") ? path : `/${path}`;
+                    return `${window.location.origin}${suffix}`;
                   };
                   return (
                     <>
