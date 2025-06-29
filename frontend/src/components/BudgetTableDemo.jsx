@@ -882,23 +882,28 @@ const BudgetTableDemo = () => {
             <path d="M3 6h14M3 10h14M3 14h14" stroke="#333" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </button>
-        <div className="relative mb-4">
-          <h1 className="text-2xl font-bold absolute left-1/2 -translate-x-1/2 text-center">
+        <div className="mb-4 relative flex justify-center items-center w-full pl-16 pr-20">
+          <h1 className="text-2xl font-bold text-center">
             Бюджет Службы обеспечения качества
           </h1>
           <button
             onClick={logout}
             className="absolute right-0 border rounded px-3 py-1 text-sm bg-white hover:bg-gray-50"
           >
-            Выйти&nbsp;(
-              {user
-                ? `${user.first_name} ${user.last_name}`.trim() || user.username
-                : "user"}
-            )
+            {user ? (
+              <>
+                <span className="hidden lg:inline">
+                  Выйти ({`${user.first_name} ${user.last_name}`.trim() || user.username})
+                </span>
+                <span className="inline lg:hidden">Выйти</span>
+              </>
+            ) : (
+              <span>Выйти</span>
+            )}
           </button>
         </div>
         {/* summary card */}
-        <div className="mb-4 -mt-4 flex flex-wrap items-start gap-4 ml-14">
+        <div className="mb-4 flex flex-wrap items-start gap-4">
           <div className="bg-white border rounded shadow-sm p-4 flex items-center gap-6">
             {/* block for Accruals */}
             {(flowMode === "acc" || flowMode === "both") && (
@@ -994,7 +999,7 @@ const BudgetTableDemo = () => {
         </div>
 
 
-      <div className="sticky top-0 bg-white z-20 mb-4 flex items-center gap-4">
+      <div className="sticky top-0 bg-white z-20 mb-4 flex flex-row flex-wrap items-center gap-2 sm:gap-4">
         <div className="inline-flex rounded overflow-hidden border">
           {["acc", "pay", "both"].map((m) => (
             <button
@@ -1115,7 +1120,7 @@ const BudgetTableDemo = () => {
                           <th
                             key={q}
                             colSpan={3}
-                            className="border p-2 text-center sticky top-0 z-10 bg-gray-100"
+                            className="border p-2 text-center sticky top-0 z-10 bg-gray-100 hidden sm:table-cell"
                           >
                             {q}
                           </th>
@@ -1127,7 +1132,7 @@ const BudgetTableDemo = () => {
                         <th
                           key={m}
                           className={clsx(
-                            "border p-2 text-center sticky top-8 z-10 bg-gray-50",
+                            "border p-2 text-center sticky top-8 z-10 bg-gray-50 hidden sm:table-cell",
                             m === currentMonthName && "bg-yellow-100"
                           )}
                         >
@@ -1161,7 +1166,7 @@ const BudgetTableDemo = () => {
                           />
                         </tr>
                         {/* totals row */}
-                        <tr key={`totals-${article.name}`} className="border-t-2 border-gray-400">
+                        <tr key={`totals-${article.name}`} className="hidden sm:table-row border-t-2 border-gray-400">
                           {/* Removed rowSpan from this td */}
                           <td className="border p-2 bg-teal-50 text-left font-medium w-56 max-w-[14rem]">
                             Итог
@@ -1182,7 +1187,7 @@ const BudgetTableDemo = () => {
                         </tr>
                         {/* quarterly totals row */}
                         {showQuarterTotals.some(Boolean) && (
-                          <tr key={`qtotals-${article.name}`} className="border-t-2 border-gray-400">
+                          <tr key={`qtotals-${article.name}`} className="hidden sm:table-row border-t-2 border-gray-400">
                             {/* Removed rowSpan from this td */}
                             <td className="border p-2 bg-emerald-50 font-medium w-56 max-w-[14rem]">
                               Квартальный итог
@@ -1340,9 +1345,8 @@ const BudgetTableDemo = () => {
                                 <td
                                   key={m}
                                   className={clsx(
-                                    "border p-2 text-right",
+                                    "border p-2 text-right hidden sm:table-cell",
                                     m === currentMonthName && "bg-yellow-50",
-
                                   )}
                                   {...(tooltipLines ? { title: tooltipLines } : {})}
                                 >
@@ -1368,7 +1372,7 @@ const BudgetTableDemo = () => {
                     {expanded && (
                       <>
                         {/* итоговая строка по статье */}
-                        <tr key={`totals-${article.name}`} className="border-t-2 border-gray-400">
+                        <tr key={`totals-${article.name}`} className="hidden sm:table-row border-t-2 border-gray-400">
                           <td className="border p-2 bg-teal-50 text-left font-medium w-56 max-w-[14rem]">
                             Итог
                           </td>
@@ -1388,7 +1392,7 @@ const BudgetTableDemo = () => {
                         </tr>
                         {/* строка по кварталам */}
                         {showQuarterTotals.some(Boolean) && (
-                          <tr key={`qtotals-${article.name}`} className="border-t-2 border-gray-400">
+                          <tr key={`qtotals-${article.name}`} className="hidden sm:table-row border-t-2 border-gray-400">
                             <td className="border p-2 bg-emerald-50 font-medium w-56 max-w-[14rem]">
                               Квартальный итог
                             </td>
@@ -1403,16 +1407,16 @@ const BudgetTableDemo = () => {
                                 ? `Резерв Н: ${res.balance_acc.toLocaleString("ru-RU")} / О: ${res.balance_pay.toLocaleString("ru-RU")}`
                                 : null;
                               return (
-                                <td
+                                <th
                                   key={qIdx}
                                   colSpan={3}
-                                  className="border p-2 bg-emerald-50 font-medium text-center whitespace-pre-line"
+                                  className="border p-2 bg-emerald-50 font-medium text-center whitespace-pre-line hidden sm:table-cell"
                                 >
                                   {formatTotalLines(qt.acc, qt.pay, qt.fAcc, qt.fPay)}
                                   {reserveLine && (
                                     <div className="text-[10px] text-gray-500 mt-1">{reserveLine}</div>
                                   )}
-                                </td>
+                                </th>
                               );
                             })}
                           </tr>
@@ -1430,7 +1434,7 @@ const BudgetTableDemo = () => {
       {/* ---------- DIALOG ---------- */}
       {dialogOpen && (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-4xl w-full">
+          <DialogContent size="md" className="px-4 py-4 overflow-x-hidden w-full max-w-[700px]">
             <DialogHeader>
               <DialogTitle>
                 {selected?.workIdx === null ? "Новая работа" : "Редактирование работы"}
@@ -1441,7 +1445,10 @@ const BudgetTableDemo = () => {
             </DialogHeader>
 
             {/* Dialog body */}
-            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-4">
+            <div
+              className="mt-2 space-y-3 max-h-[70vh] overflow-y-auto overflow-x-hidden pr-4"
+              style={{ scrollbarGutter: "stable both-edges" }}
+            >
               {/* Article select */}
               <div>
                 <label className="block text-sm mb-1 font-medium">Статья</label>
@@ -1449,7 +1456,7 @@ const BudgetTableDemo = () => {
                   value={workArticleId ? String(workArticleId) : ""}
                   onValueChange={(v) => setWorkArticleId(Number(v))}
                 >
-                  <SelectTrigger className="w-110">
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Выберите статью" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1516,8 +1523,8 @@ const BudgetTableDemo = () => {
               <div>
                 <label className="block text-sm mb-1 font-medium">Обоснование</label>
                 <textarea
-                  rows={2}
-                  className="w-full border rounded p-2 text-sm"
+                  rows={4}
+                  className="w-full border rounded p-2 text-sm min-h-[6rem]"
                   value={justification}
                   onChange={(e) => setJustification(e.target.value)}
                   placeholder="Почему необходима работа"
@@ -1905,7 +1912,7 @@ const BudgetTableDemo = () => {
                 </section>
               )}
             </div>
-            <DialogFooter className="mt-4">
+            <DialogFooter className="mt-1 py-0 space-x-0">
               {selected?.workIdx !== null && (
                 <Button variant="destructive" onClick={handleDelete}>
                   Удалить работу
