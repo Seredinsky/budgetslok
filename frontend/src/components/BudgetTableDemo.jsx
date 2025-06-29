@@ -1503,19 +1503,13 @@ const BudgetTableDemo = () => {
                 <h3 className="font-semibold mb-2 flex items-center">
                   <Paperclip className="w-4 h-4 mr-1" /> Материалы
                 </h3>
-                {/* helper to build absolute URL without double "materials/" */}
+                {/* helper to build file URL as relative path */}
                 {(() => {
                   const buildFileUrl = (path) => {
                     if (!path) return "#";
-                    // абсолютный url — отдаем как есть
                     if (/^https?:\/\//i.test(path)) return path;
-                    try {
-                      // URL() корректно склеит базу и относительный путь,
-                      // избегая двойных сегментов вроде "/materials/materials/"
-                      return new URL(path.replace(/^\/+/, ""), BACKEND_ORIGIN).href;
-                    } catch {
-                      return `${BACKEND_ORIGIN.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
-                    }
+                    // serve via current origin to avoid mixed‐content redirects
+                    return path.startsWith("/") ? path : `/${path}`;
                   };
                   return (
                     <>
@@ -1528,16 +1522,14 @@ const BudgetTableDemo = () => {
                                 {f.file ? (
                                   <a
                                     href={fileUrl}
+                                    download
+                                    target="_blank"
+                                    rel="noreferrer"
                                     className="underline"
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      const link = document.createElement("a");
-                                      link.href = fileUrl;
-                                      link.setAttribute("download", niceFileName(f.file, f.name));
-                                      document.body.appendChild(link);
-                                      link.click();
-                                      document.body.removeChild(link);
+                                      window.open(fileUrl, "_blank");
                                     }}
                                   >
                                     {niceFileName(f.file, f.name)}
