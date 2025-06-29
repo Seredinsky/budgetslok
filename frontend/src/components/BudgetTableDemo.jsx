@@ -1273,7 +1273,7 @@ const BudgetTableDemo = () => {
                                 {article.name}
                               </td>
                             )}
-                            <td className="border p-2 bg-white text-left w-56 max-w-[14rem]">
+                            <td className="border p-2 bg-white text-left w-56 max-w-[14rem] relative">
                               <div className="flex items-center gap-2">
                                 <span
                                   className={clsx(
@@ -1285,14 +1285,14 @@ const BudgetTableDemo = () => {
                                       : "bg-red-500"
                                   )}
                                 />
-                                {work.name}
-                                {work.materials?.length > 0 && (
-                                  <span className="inline-flex items-center text-xs text-gray-500 ml-1">
-                                    <Paperclip className="w-3 h-3 mr-0.5" />
-                                    {work.materials.length}
-                                  </span>
-                                )}
+                                <span className="truncate">{work.name}</span>
                               </div>
+                              {work.materials?.length > 0 && (
+                                <span className="absolute top-2 right-2 inline-flex items-center text-xs text-gray-500">
+                                  <Paperclip className="w-4 h-4 mr-0.5" />
+                                  {work.materials.length}
+                                </span>
+                              )}
                               <div className="text-xs text-gray-500 mt-1 flex items-center justify-between">
                                 <span>
                                   {work.year} · {userName(work.responsible)}
