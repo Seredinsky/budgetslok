@@ -1507,10 +1507,14 @@ const BudgetTableDemo = () => {
                 {(() => {
                   const buildFileUrl = (path) => {
                     if (!path) return "#";
-                    if (/^https?:\/\//i.test(path)) return path;
-                    // build absolute URL on current origin to enforce HTTPS
-                    const suffix = path.startsWith("/") ? path : `/${path}`;
-                    return `${window.location.origin}${suffix}`;
+                    try {
+                      const url = new URL(path, window.location.origin);
+                      // Return only the path, query, and hash to ensure the same-origin HTTPS URL
+                      return url.pathname + url.search + url.hash;
+                    } catch {
+                      // Fallback to a relative path
+                      return path.startsWith("/") ? path : `/${path}`;
+                    }
                   };
                   return (
                     <>
