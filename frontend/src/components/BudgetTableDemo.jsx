@@ -1252,10 +1252,7 @@ const BudgetTableDemo = () => {
                             key={work.id}
                             className={clsx(
                               "cursor-pointer hover:bg-gray-50",
-                              wIdx === 0 && "border-t-2 border-gray-300",
-                              work.feasibility === "green" && "bg-green-50",
-                              work.feasibility === "yellow" && "bg-yellow-50",
-                              work.feasibility === "red" && "bg-red-50"
+                              wIdx === 0 && "border-t-2 border-gray-300"
                             )}
                             onClick={() => {
                               const realWorkIdx = data[realArticleIdx].works.findIndex((w2) => w2.id === work.id);
@@ -1276,7 +1273,17 @@ const BudgetTableDemo = () => {
                               </td>
                             )}
                             <td className="border p-2 bg-white text-left relative w-56 max-w-[14rem]">
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={clsx(
+                                    "inline-block w-3 h-3 rounded-full",
+                                    work.feasibility === "green"
+                                      ? "bg-green-500"
+                                      : work.feasibility === "yellow"
+                                      ? "bg-yellow-500"
+                                      : "bg-red-500"
+                                  )}
+                                />
                                 {work.name}
                                 {work.materials?.length > 0 && (
                                   <span className="inline-flex items-center text-xs text-gray-500">
@@ -1533,16 +1540,32 @@ const BudgetTableDemo = () => {
                 <label className="block text-sm mb-1 font-medium">
                   Возможность реализации
                 </label>
-                <Select value={feasibility} onValueChange={(v) => setFeasibility(v)}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Выберите цвет" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="green">Зелёный (выполнится)</SelectItem>
-                    <SelectItem value="yellow">Жёлтый (скорее выполнится)</SelectItem>
-                    <SelectItem value="red">Красный (вряд ли выполнится)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center space-x-3 mb-4">
+                  <button
+                    type="button"
+                    className={clsx(
+                      "w-6 h-6 rounded-full border-2",
+                      feasibility === "green" ? "bg-green-500 border-green-500" : "border-gray-300"
+                    )}
+                    onClick={() => setFeasibility("green")}
+                  />
+                  <button
+                    type="button"
+                    className={clsx(
+                      "w-6 h-6 rounded-full border-2",
+                      feasibility === "yellow" ? "bg-yellow-500 border-yellow-500" : "border-gray-300"
+                    )}
+                    onClick={() => setFeasibility("yellow")}
+                  />
+                  <button
+                    type="button"
+                    className={clsx(
+                      "w-6 h-6 rounded-full border-2",
+                      feasibility === "red" ? "bg-red-500 border-red-500" : "border-gray-300"
+                    )}
+                    onClick={() => setFeasibility("red")}
+                  />
+                </div>
               </div>
               {/* Materials */}
               <section>
