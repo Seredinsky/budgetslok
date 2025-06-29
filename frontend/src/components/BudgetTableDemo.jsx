@@ -733,6 +733,7 @@ const BudgetTableDemo = () => {
       let fAcc = 0;
       let fPay = 0;
       article.works.forEach((w) => {
+        if (w.feasibility === "red") return;
         const a = w.accruals || {};
         const p = w.payments || {};
         const fa = w.actual_accruals || {};
@@ -1273,10 +1274,10 @@ const BudgetTableDemo = () => {
                               </td>
                             )}
                             <td className="border p-2 bg-white text-left relative w-56 max-w-[14rem]">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-start gap-2">
                                 <span
                                   className={clsx(
-                                    "inline-block w-3 h-3 rounded-full",
+                                    "flex-none w-3 h-3 rounded-full",
                                     work.feasibility === "green"
                                       ? "bg-green-500"
                                       : work.feasibility === "yellow"
