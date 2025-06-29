@@ -159,6 +159,8 @@ const BudgetTableDemo = () => {
       if (!selectedArticles.includes(article.id)) return;
 
       article.works.forEach((w) => {
+        // Skip works with feasibility === "red"
+        if (w.feasibility === "red") return;
         if (
           (yearFilter !== "all" && String(w.year) !== yearFilter) ||
           (respFilter !== "all" && String(w.responsible) !== String(respFilter))
@@ -403,6 +405,8 @@ const BudgetTableDemo = () => {
   const [accrualRows, setAccrualRows] = useState([]);
   const [paymentRows, setPaymentRows] = useState([]);
   const [vatRate, setVatRate] = useState(0);
+  const [feasibility, setFeasibility] = useState("green");
+ 
 
   // ──────────── Helpers ────────────
   const addRow = (setter) =>
@@ -484,6 +488,7 @@ const BudgetTableDemo = () => {
       setAccrualRows([{ month: "", amount: "", checked: false, actual: "" }]);
       setPaymentRows([{ month: "", amount: "", checked: false, actual: "" }]);
       setVatRate(0);
+      setFeasibility("green");
     } else {
       // editing existing work
       w = article.works[workIdx];
@@ -497,6 +502,7 @@ const BudgetTableDemo = () => {
       setAccrualRows(objToRows(w.accruals, w.actual_accruals));
       setPaymentRows(objToRows(w.payments, w.actual_payments));
       setVatRate(w.vat_rate || 0);
+      setFeasibility(w.feasibility || "green");
       // initialize separate cancel/transfer flags for accruals and payments
       const initCancelAcc = {};
       const initTransferAcc = {};
@@ -587,6 +593,7 @@ const BudgetTableDemo = () => {
       year,
       responsible,
       vat_rate: vatRate,
+      feasibility,
       materials,
     };
 
@@ -1245,7 +1252,10 @@ const BudgetTableDemo = () => {
                             key={work.id}
                             className={clsx(
                               "cursor-pointer hover:bg-gray-50",
-                              wIdx === 0 && "border-t-2 border-gray-300"
+                              wIdx === 0 && "border-t-2 border-gray-300",
+                              work.feasibility === "green" && "bg-green-50",
+                              work.feasibility === "yellow" && "bg-yellow-50",
+                              work.feasibility === "red" && "bg-red-50"
                             )}
                             onClick={() => {
                               const realWorkIdx = data[realArticleIdx].works.findIndex((w2) => w2.id === work.id);
@@ -1518,6 +1528,22 @@ const BudgetTableDemo = () => {
                 ></textarea>
               </div>
 
+              {/* Feasibility (traffic light) */}
+              <div>
+                <label className="block text-sm mb-1 font-medium">
+                  Возможность реализации
+                </label>
+                <Select value={feasibility} onValueChange={(v) => setFeasibility(v)}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Выберите цвет" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="green">Зелёный (выполнится)</SelectItem>
+                    <SelectItem value="yellow">Жёлтый (скорее выполнится)</SelectItem>
+                    <SelectItem value="red">Красный (вряд ли выполнится)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               {/* Materials */}
               <section>
                 <h3 className="font-semibold mb-2 flex items-center">
