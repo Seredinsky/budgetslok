@@ -694,17 +694,13 @@ const BudgetTableDemo = () => {
     if (idx >= 0) openDialog(idx);
   };
 
-  // вернуть true если работа содержит хоть одно значение в выбранных visibleMonths
+  // вернуть true если работа содержит данные в выбранных visibleMonths и согласно flowMode
   const workHasVisibleData = (w) => {
-    const allMaps = [
-      w.accruals || {},
-      w.payments || {},
-      w.actual_accruals || {},
-      w.actual_payments || {},
-    ];
-    return visibleMonths.some((m) =>
-      allMaps.some((obj) => obj[m] && obj[m] !== 0)
-    );
+    return visibleMonths.some((m) => {
+      if (showAccruals && (w.accruals?.[m] || w.actual_accruals?.[m])) return true;
+      if (showPayments && (w.payments?.[m] || w.actual_payments?.[m])) return true;
+      return false;
+    });
   };
    // вернуть резерв по статье, году и кварталу (1-4)
   const findReserve = (itemId, year, quarter) =>
@@ -1251,7 +1247,10 @@ const BudgetTableDemo = () => {
                               "cursor-pointer hover:bg-gray-50",
                               wIdx === 0 && "border-t-2 border-gray-300"
                             )}
-                            onClick={() => openDialog(realArticleIdx, wIdx)}
+                            onClick={() => {
+                              const realWorkIdx = data[realArticleIdx].works.findIndex((w2) => w2.id === work.id);
+                              openDialog(realArticleIdx, realWorkIdx);
+                            }}
                           >
                             {wIdx === 0 && (
                               <td
@@ -1353,7 +1352,7 @@ const BudgetTableDemo = () => {
                         {/* итоговая строка по статье */}
                         <tr key={`totals-${article.name}`} className="border-t-2 border-gray-400">
                           <td className="border p-2 bg-teal-50 text-left font-medium w-56 max-w-[14rem]">
-                            Итого
+                            Итог
                           </td>
                           {visibleMonths.map((m) => (
                             <td
