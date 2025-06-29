@@ -1277,7 +1277,7 @@ const BudgetTableDemo = () => {
                               <div className="flex items-center gap-2">
                                 <span
                                   className={clsx(
-                                    "inline-block w-3 h-3 rounded-full",
+                                    "inline-block flex-none w-3 h-3 rounded-full",
                                     work.feasibility === "green"
                                       ? "bg-green-500"
                                       : work.feasibility === "yellow"
@@ -1287,7 +1287,7 @@ const BudgetTableDemo = () => {
                                 />
                                 {work.name}
                                 {work.materials?.length > 0 && (
-                                  <Paperclip className="w-3 h-3 text-gray-500 ml-1" />
+                                  <Paperclip className="w-3 h-3 flex-none text-gray-500 ml-1" />
                                 )}
                               </div>
                               <div className="text-xs text-gray-500 mt-1 flex items-center justify-between">
