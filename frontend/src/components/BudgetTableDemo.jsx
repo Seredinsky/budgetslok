@@ -1533,8 +1533,8 @@ const BudgetTableDemo = () => {
                                     rel="noreferrer"
                                     className="underline"
                                     onClick={(e) => {
-                                      e.stopPropagation();
                                       e.preventDefault();
+                                      e.stopPropagation();
                                       window.open(fileUrl, "_blank");
                                     }}
                                   >
