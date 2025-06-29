@@ -665,6 +665,27 @@ const BudgetTableDemo = () => {
     }
   };
 
+  // delete work handler
+  const handleDelete = async () => {
+    if (!selected || selected.workIdx === null) return;
+    if (!window.confirm("Вы уверены, что хотите удалить эту работу?")) return;
+    try {
+      const { articleIdx, workIdx } = selected;
+      const work = data[articleIdx].works[workIdx];
+      await axios.delete(`works/${work.id}/`);
+      // remove from state
+      setData((prev) => {
+        const clone = structuredClone(prev);
+        clone[articleIdx].works.splice(workIdx, 1);
+        return clone;
+      });
+      setDialogOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Не удалось удалить работу.");
+    }
+  };
+
   // плавающая кнопка "Добавить работу"
   const handleAddWorkFab = () => {
     if (selectedArticles.length === 0) return;
@@ -1834,6 +1855,11 @@ const BudgetTableDemo = () => {
               )}
             </div>
             <DialogFooter className="mt-4">
+              {selected?.workIdx !== null && (
+                <Button variant="destructive" onClick={handleDelete}>
+                  Удалить работу
+                </Button>
+              )}
               <Button onClick={handleSave}>Сохранить</Button>
             </DialogFooter>
           </DialogContent>
