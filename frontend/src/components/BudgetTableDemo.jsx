@@ -1287,7 +1287,10 @@ const BudgetTableDemo = () => {
                                 />
                                 {work.name}
                                 {work.materials?.length > 0 && (
-                                  <Paperclip className="w-3 h-3 flex-none text-gray-500 ml-1" />
+                                  <span className="inline-flex items-center text-xs text-gray-500 ml-1">
+                                    <Paperclip className="w-3 h-3 mr-0.5" />
+                                    {work.materials.length}
+                                  </span>
                                 )}
                               </div>
                               <div className="text-xs text-gray-500 mt-1 flex items-center justify-between">
