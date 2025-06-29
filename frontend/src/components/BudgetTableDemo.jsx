@@ -1434,7 +1434,7 @@ const BudgetTableDemo = () => {
       {/* ---------- DIALOG ---------- */}
       {dialogOpen && (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent size="md" className="px-4 py-4 overflow-x-hidden w-full max-w-[700px]">
+          <DialogContent size="md" className="px-4 py-4 overflow-x-hidden w-full max-w-[90vw] sm:max-w-[700px]">
             <DialogHeader>
               <DialogTitle>
                 {selected?.workIdx === null ? "Новая работа" : "Редактирование работы"}
