@@ -1430,7 +1430,7 @@ const BudgetTableDemo = () => {
       {/* ---------- DIALOG ---------- */}
       {dialogOpen && (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-screen-xl w-full">
+          <DialogContent className="max-w-4xl w-full">
             <DialogHeader>
               <DialogTitle>
                 {selected?.workIdx === null ? "Новая работа" : "Редактирование работы"}
@@ -1441,7 +1441,7 @@ const BudgetTableDemo = () => {
             </DialogHeader>
 
             {/* Dialog body */}
-            <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-4">
               {/* Article select */}
               <div>
                 <label className="block text-sm mb-1 font-medium">Статья</label>
