@@ -1275,8 +1275,9 @@ const BudgetTableDemo = () => {
                             )}
                             <td className="relative border p-2 bg-white text-left w-56 max-w-[14rem] pr-6">
                               {work.name}
-                              <div className="text-xs text-gray-500">
-                                {work.year} · {userName(work.responsible)}
+                              <div className="text-xs text-gray-500 flex items-center justify-between">
+                                <span>{work.year} · {userName(work.responsible)}</span>
+                                {hasAllFacts && <CheckCircle className="w-4 h-4 text-emerald-500" />}
                               </div>
                               {/* feasibility traffic light */}
                               <span
@@ -1292,10 +1293,6 @@ const BudgetTableDemo = () => {
                               {/* file count */}
                               {work.materials?.length > 0 && (
                                 <Paperclip className="absolute top-2 right-8 w-3 h-3 text-gray-500" />
-                              )}
-                              {/* completion check */}
-                              {hasAllFacts && (
-                                <CheckCircle className="absolute top-2 right-12 w-4 h-4 text-emerald-500" />
                               )}
                             </td>
                             {visibleMonths.map((m) => {
