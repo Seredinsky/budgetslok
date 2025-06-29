@@ -38,6 +38,11 @@ class WorkSerializer(serializers.ModelSerializer):
     # Include parent item's group details
     group = GroupSerializer(source="item.group", read_only=True)
 
+    feasibility = serializers.ChoiceField(
+        choices=Work.FEASIBILITY_CHOICES,
+        default='green'
+    )
+
     class Meta:
         model = Work
         fields = (
@@ -47,6 +52,7 @@ class WorkSerializer(serializers.ModelSerializer):
             "accruals", "payments",
             "actual_accruals", "actual_payments",
             "vat_rate",
+            "feasibility",
             "materials",
             "group",  # optional: include item group
         )

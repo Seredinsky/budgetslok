@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-fallback")  # задайте в .env
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(int(os.getenv("DEBUG", 0)))  # 1 → True
+DEBUG = bool(int(os.getenv("DEBUG", 1)))  # 1 → True
 
 # Замените на свои реальные хосты/домен при деплое
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
@@ -104,11 +104,18 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 #
-# Database configuration: support external DATA_DIR or DB_PATH
+# Database configuration: local sqlite in DEBUG, else external DB_PATH or DATA_DIR
 db_path_env = os.environ.get('DB_PATH')
-if db_path_env:
+if DEBUG:
+    # local development: store sqlite in project root
+    sqlite_path = BASE_DIR / 'db.sqlite3'
+    sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+elif db_path_env:
+    # production with explicit path
     sqlite_path = Path(db_path_env)
+    sqlite_path.parent.mkdir(parents=True, exist_ok=True)
 else:
+    # production default: use DATA_DIR
     data_dir = os.environ.get('DATA_DIR', '/data')
     sqlite_path = Path(data_dir) / 'db.sqlite3'
 

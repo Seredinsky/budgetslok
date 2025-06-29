@@ -75,6 +75,18 @@ class Work(models.Model):
         help_text="Процент НДС"
     )
 
+    FEASIBILITY_CHOICES = [
+        ('green', 'Выполнима'),
+        ('yellow', 'Вероятно выполнима'),
+        ('red', 'Скорее не выполнима'),
+    ]
+    feasibility = models.CharField(
+        "Возможность реализации",
+        max_length=10,
+        choices=FEASIBILITY_CHOICES,
+        default='green',
+    )
+
     class Meta:
         permissions = [
             (

@@ -22,8 +22,8 @@ class BudgetItemAdmin(admin.ModelAdmin):
 
 @admin.register(Work)
 class WorkAdmin(admin.ModelAdmin):
-    list_display = ("name", "item", "vat_rate", "responsible", "year")
-    list_filter  = ("item", "vat_rate", "responsible", "year")
+    list_display = ("name", "item", "vat_rate", "responsible", "feasibility", "year")
+    list_filter  = ("item", "vat_rate", "responsible", "feasibility", "year")
     search_fields = (
         "name",
         "responsible__username",
