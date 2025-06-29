@@ -1593,21 +1593,23 @@ const BudgetTableDemo = () => {
                           {materials.map((f, idx) => {
                             const fileUrl = buildFileUrl(f.file);
                             return (
-                              <li key={idx} className="flex items-center gap-2 flex-wrap">
-                                {f.file ? (
-                                  <a
-                                    href={fileUrl}
-                                    download
-                                    className="underline break-all"
-                                  >
-                                    {niceFileName(f.file, f.name)}
-                                  </a>
-                                ) : (
-                                  <span className="break-all">{f.name}</span>
-                                )}
-                                <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); removeMaterial(idx); }}>
-                                  <X className="w-4 h-4" />
-                                </Button>
+                              <li key={idx} className="mb-1 text-sm">
+                                <div className="flex items-end gap-2">
+                                  {f.file ? (
+                                    <a
+                                      href={fileUrl}
+                                      download
+                                      className="underline break-all flex-1"
+                                    >
+                                      {niceFileName(f.file, f.name)}
+                                    </a>
+                                  ) : (
+                                    <span className="break-all flex-1">{f.name}</span>
+                                  )}
+                                  <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); removeMaterial(idx); }}>
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               </li>
                             );
                           })}
