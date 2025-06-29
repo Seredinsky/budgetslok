@@ -1285,7 +1285,9 @@ const BudgetTableDemo = () => {
                                       : "bg-red-500"
                                   )}
                                 />
-                                <span className="truncate">{work.name}</span>
+                                <span className="whitespace-normal break-words">
+                                  {work.name}
+                                </span>
                               </div>
                               {work.materials?.length > 0 && (
                                 <span className="absolute top-2 right-2 inline-flex items-center text-xs text-gray-500">
