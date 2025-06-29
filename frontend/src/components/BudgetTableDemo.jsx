@@ -1523,14 +1523,7 @@ const BudgetTableDemo = () => {
                                   <a
                                     href={fileUrl}
                                     download
-                                    target="_blank"
-                                    rel="noreferrer"
                                     className="underline"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      window.open(fileUrl, "_blank");
-                                    }}
                                   >
                                     {niceFileName(f.file, f.name)}
                                   </a>
