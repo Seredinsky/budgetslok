@@ -48,11 +48,23 @@ urlpatterns += [
     ),
 ]
 
-# React single‑page app – return index.html for any unmatched route except admin, api, materials
+# Serve Django static files at STATIC_URL
+urlpatterns += static(
+    settings.STATIC_URL, document_root=settings.STATIC_ROOT
+)
+
+# Serve React build files under /static/react/
+urlpatterns += static(
+    '/static/react/',
+    document_root=settings.FRONTEND_DIST
+)
+
+# React single‑page app – return production index.html from dist for any unmatched route
 urlpatterns += [
     re_path(
-        r'^(?!admin/|api/|materials/).*$',
-        TemplateView.as_view(template_name="index.html"),
+        r'^(?!admin/|api/|materials/|static/).*$',
+        static_serve,
+        {'path': 'index.html', 'document_root': settings.FRONTEND_DIST},
         name="spa"
     ),
 ]

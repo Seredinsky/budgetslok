@@ -45,8 +45,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.middleware.security.SecurityMiddleware',
     "corsheaders.middleware.CorsMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -164,7 +164,15 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 _react_static = BASE_DIR / "static"
-STATICFILES_DIRS = [_react_static] if _react_static.exists() else []
+# React production build directory
+FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
+
+# Serve both Django static and React dist
+STATICFILES_DIRS = []
+if _react_static.exists():
+    STATICFILES_DIRS.append(_react_static)
+if FRONTEND_DIST.exists():
+    STATICFILES_DIRS.append(FRONTEND_DIST)
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
