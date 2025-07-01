@@ -26,6 +26,12 @@ router.register(r"reserves", ReserveViewSet)
 router.register(r"users", UserViewSet, basename="user")
 
 urlpatterns = [
+    # Redirect root URL to React build
+    path(
+        "",
+        RedirectView.as_view(url="/static/react/", permanent=True),
+        name="root-redirect"
+    ),
     path("admin/", admin.site.urls),
     path("api/login/",  session_login, name="api_login"),
     path("api/logout/", session_logout, name="api_logout"),
