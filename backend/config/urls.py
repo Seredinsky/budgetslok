@@ -77,6 +77,9 @@ urlpatterns += [
             "document_root": settings.BASE_DIR / "static",
         },
     ),
+    path('sw.js', static_serve, {'path': 'sw.js', 'document_root': settings.FRONTEND_DIST}),
+    path('manifest.webmanifest', static_serve, {'path': 'manifest.webmanifest', 'document_root': settings.FRONTEND_DIST}),
+    master
 ]
 
 # React single‑page app – return production index.html from dist for any unmatched route
