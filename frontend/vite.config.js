@@ -11,12 +11,14 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: null, // we register SW manually
       includeAssets: ['favicon.ico', 'robots.txt', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'Бюджет Службы обеспечения качества',
         short_name: 'Бюджет СлОК',
-        start_url: '/static/react/',
-        scope: '/static/react/',
+        // allow installing the PWA from the site root
+        start_url: '/',
+        scope: '/',
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: '#42b883',

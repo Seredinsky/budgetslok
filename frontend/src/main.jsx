@@ -2,17 +2,12 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
-import { registerSW } from 'virtual:pwa-register'
-
-// Register service worker for PWA
-registerSW({
-  onNeedRefresh() {
-    // TODO: notify user of new version
-  },
-  onOfflineReady() {
-    // TODO: notify user that app is ready for offline use
-  },
-})
+// Manually register service worker from the site root so it controls '/' URLs
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+  })
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

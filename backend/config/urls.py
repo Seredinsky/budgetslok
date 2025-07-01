@@ -59,6 +59,26 @@ urlpatterns += static(
     document_root=settings.FRONTEND_DIST
 )
 
+# Serve PWA files like sw.js and manifest.webmanifest from the site root
+urlpatterns += [
+    path(
+        "sw.js",
+        static_serve,
+        {
+            "path": "sw.js",
+            "document_root": settings.BASE_DIR / "static",
+        },
+    ),
+    path(
+        "manifest.webmanifest",
+        static_serve,
+        {
+            "path": "manifest.webmanifest",
+            "document_root": settings.BASE_DIR / "static",
+        },
+    ),
+]
+
 # React single‑page app – return production index.html from dist for any unmatched route
 urlpatterns += [
     re_path(
