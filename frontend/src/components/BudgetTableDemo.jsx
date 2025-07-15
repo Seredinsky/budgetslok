@@ -525,7 +525,17 @@ const BudgetTableDemo = () => {
       setResponsible(user?.id ? String(user.id) : "");
       setMaterials([]);
       setAccrualRows([{ month: "", amount: "", checked: false, actual: "" }]);
-      setAccrualDetails([{ month: "", amount: "", closing_document: "", comment: "", comment_file: null }]);
+      setAccrualDetails([
+        {
+          month: "",
+          amount: "",
+          closing_document: "",
+          comment: "",
+          comment_file: null,
+          cancel_reason: "",
+          transfer_reason: "",
+        }
+      ]);
       setShowAccrualDetailFlags([false]);
       setPaymentRows([{ month: "", amount: "", checked: false, actual: "" }]);
       setPaymentDetails([{
@@ -541,6 +551,8 @@ const BudgetTableDemo = () => {
         payment_close: "",
         comment: "",
         comment_file: null,
+        cancel_reason: "",
+        transfer_reason: "",
       }]);
       setShowPaymentDetailFlags([false]);
       setVatRate(0);
@@ -563,14 +575,18 @@ const BudgetTableDemo = () => {
       setWorkArticleId(article.id);
       setMaterials(w.materials || []);
       setAccrualRows(objToRows(w.accruals, w.actual_accruals));
-      setAccrualDetails((w.accrual_details || []).map(d => ({
-        id: d.id,
-        month: d.month,
-        amount: String(d.amount),
-        closing_document: d.closing_document || "",
-        comment: d.comment || "",
-        comment_file: d.comment_file || null,
-      })));
+      setAccrualDetails(
+        (w.accrual_details || []).map(d => ({
+          id: d.id,
+          month: d.month,
+          amount: String(d.amount),
+          closing_document: d.closing_document || "",
+          comment: d.comment || "",
+          comment_file: d.comment_file || null,
+          cancel_reason: d.cancel_reason || "",
+          transfer_reason: d.transfer_reason || "",
+        }))
+      );
       setShowAccrualDetailFlags((w.accrual_details || []).map(() => false));
       setPaymentRows(objToRows(w.payments, w.actual_payments));
       setPaymentDetails(
@@ -588,6 +604,8 @@ const BudgetTableDemo = () => {
           payment_close: d.payment_close || "",
           comment: d.comment || "",
           comment_file: d.comment_file || null,
+          cancel_reason: d.cancel_reason || "",
+          transfer_reason: d.transfer_reason || "",
         }))
       );
       setShowPaymentDetailFlags((w.payment_details || []).map(() => false));

@@ -40,8 +40,8 @@ class AccrualDetailSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'month': {'required': False},
             'amount': {'required': False},
-            'cancel_reason': {'required': False},
-            'transfer_reason': {'required': False},
+            'cancel_reason': {'required': False, 'allow_blank': True},
+            'transfer_reason': {'required': False, 'allow_blank': True},
         }
 
 class UserLightSerializer(serializers.ModelSerializer):
@@ -104,14 +104,18 @@ class WorkSerializer(serializers.ModelSerializer):
         if pay_details is not None:
             instance.payment_details.all().delete()
             for det in pay_details:
+                # удалить пустой файл и старый id перед созданием
                 if det.get('comment_file') in (None, {}, ''):
                     det.pop('comment_file', None)
+                det.pop('id', None)
                 PaymentDetail.objects.create(work=work, **det)
         if accr_details is not None:
             instance.accrual_details.all().delete()
             for det in accr_details:
+                # удалить пустой файл и старый id перед созданием
                 if det.get('comment_file') in (None, {}, ''):
                     det.pop('comment_file', None)
+                det.pop('id', None)
                 AccrualDetail.objects.create(work=work, **det)
         return work
 
