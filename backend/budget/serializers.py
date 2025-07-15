@@ -17,12 +17,15 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
             'id', 'month', 'amount',
             'creditor', 'contract', 'pfm', 'fp',
             'mvz', 'mm', 'payment_document',
-            'payment_close', 'comment', 'comment_file'
+            'payment_close', 'comment', 'comment_file',
+            'cancel_reason', 'transfer_reason',
         )
         read_only_fields = ('id',)
         extra_kwargs = {
             'month': {'required': False},
             'amount': {'required': False},
+            'cancel_reason': {'required': False, 'allow_blank': True},
+            'transfer_reason': {'required': False, 'allow_blank': True},
         }
 
 class AccrualDetailSerializer(serializers.ModelSerializer):
@@ -30,12 +33,15 @@ class AccrualDetailSerializer(serializers.ModelSerializer):
         model = AccrualDetail
         fields = (
             'id', 'month', 'amount',
-            'closing_document', 'comment', 'comment_file'
+            'closing_document', 'comment', 'comment_file',
+            'cancel_reason', 'transfer_reason',
         )
         read_only_fields = ('id',)
         extra_kwargs = {
             'month': {'required': False},
             'amount': {'required': False},
+            'cancel_reason': {'required': False},
+            'transfer_reason': {'required': False},
         }
 
 class UserLightSerializer(serializers.ModelSerializer):

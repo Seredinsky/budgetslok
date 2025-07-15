@@ -715,6 +715,8 @@ const BudgetTableDemo = () => {
         payment_close: det.payment_close,
         comment: det.comment,
         comment_file: det.comment_file,
+        cancel_reason: det.cancel_reason,
+        transfer_reason: det.transfer_reason,
       })),
       accrual_details: accrualDetails.map((det, idx) => ({
         id: det.id,
@@ -725,6 +727,8 @@ const BudgetTableDemo = () => {
         closing_document: det.closing_document,
         comment: det.comment,
         comment_file: det.comment_file,
+        cancel_reason: det.cancel_reason,
+        transfer_reason: det.transfer_reason,
       })),
     };
 
@@ -1973,6 +1977,23 @@ const BudgetTableDemo = () => {
                     >
                       <Repeat className="w-4 h-4" />
                     </Button>
+                    
+                    {cancelPaymentChecks[row.month] && (
+                      <textarea
+                        className="w-full border rounded p-2 text-sm mt-1"
+                        placeholder="Причина отмены оплаты"
+                        value={paymentDetails[idx]?.cancel_reason || ""}
+                        onChange={e => updatePaymentDetail(idx, 'cancel_reason', e.target.value)}
+                      />
+                    )}
+                    {transferPaymentChecks[row.month] && (
+                      <textarea
+                        className="w-full border rounded p-2 text-sm mt-1"
+                        placeholder="Причина переноса оплаты"
+                        value={paymentDetails[idx]?.transfer_reason || ""}
+                        onChange={e => updatePaymentDetail(idx, 'transfer_reason', e.target.value)}
+                      />
+                    )}
                     {cancelPaymentChecks[row.month] && (
                       <span className="italic text-gray-500 ml-2">Отмена</span>
                     )}
@@ -2210,6 +2231,22 @@ const BudgetTableDemo = () => {
                     >
                       <Repeat className="w-4 h-4" />
                     </Button>
+                    {cancelAccrualChecks[row.month] && (
+                      <textarea
+                        className="w-full border rounded p-2 text-sm mt-1"
+                        placeholder="Причина отмены начисления"
+                        value={accrualDetails[idx]?.cancel_reason || ""}
+                        onChange={e => updateAccrualDetail(idx, 'cancel_reason', e.target.value)}
+                      />
+                    )}
+                    {transferAccrualChecks[row.month] && (
+                      <textarea
+                        className="w-full border rounded p-2 text-sm mt-1"
+                        placeholder="Причина переноса начисления"
+                        value={accrualDetails[idx]?.transfer_reason || ""}
+                        onChange={e => updateAccrualDetail(idx, 'transfer_reason', e.target.value)}
+                      />
+                    )}
                     {cancelAccrualChecks[row.month] && (
                       <span className="italic text-gray-500 ml-2">Отмена</span>
                     )}

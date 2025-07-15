@@ -268,6 +268,15 @@ class PaymentDetail(models.Model):
         null=True,
         blank=True
     )
+    # Причины отмены или переноса оплаты
+    cancel_reason = models.TextField(
+        "Причина отмены оплаты",
+        blank=True
+    )
+    transfer_reason = models.TextField(
+        "Причина переноса оплаты",
+        blank=True
+    )
 
     class Meta:
         verbose_name = "Деталь оплаты"
@@ -304,6 +313,15 @@ class AccrualDetail(models.Model):
         "Файл комментария",
         upload_to="accrual_comments/",
         null=True,
+        blank=True
+    )
+    # Причины отмены или переноса начисления
+    cancel_reason = models.TextField(
+        "Причина отмены",
+        blank=True
+    )
+    transfer_reason = models.TextField(
+        "Причина переноса",
         blank=True
     )
 
