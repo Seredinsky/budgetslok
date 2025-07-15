@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import BudgetItem, Work, Material, QuarterReserve, PaymentDetail
+from .models import BudgetItem, Work, Material, QuarterReserve, PaymentDetail, AccrualDetail
 from .models import Group
 from django.contrib.auth.models import User
 
@@ -18,6 +18,19 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
             'creditor', 'contract', 'pfm', 'fp',
             'mvz', 'mm', 'payment_document',
             'payment_close', 'comment', 'comment_file'
+        )
+        read_only_fields = ('id',)
+        extra_kwargs = {
+            'month': {'required': False},
+            'amount': {'required': False},
+        }
+
+class AccrualDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AccrualDetail
+        fields = (
+            'id', 'month', 'amount',
+            'closing_document', 'comment', 'comment_file'
         )
         read_only_fields = ('id',)
         extra_kwargs = {
@@ -51,6 +64,7 @@ class WorkSerializer(serializers.ModelSerializer):
     )
     materials = MaterialSerializer(many=True, read_only=True)
     payment_details = PaymentDetailSerializer(many=True, required=False)
+    accrual_details = AccrualDetailSerializer(many=True, required=False)
     # Include parent item's group details
     group = GroupSerializer(source="item.group", read_only=True)
 
@@ -68,22 +82,31 @@ class WorkSerializer(serializers.ModelSerializer):
     certification_body = serializers.CharField(required=False, allow_blank=True)
 
     def create(self, validated_data):
-        details = validated_data.pop('payment_details', [])
+        pay_details = validated_data.pop('payment_details', [])
+        accr_details = validated_data.pop('accrual_details', [])
         work = super().create(validated_data)
-        for det in details:
+        for det in pay_details:
             PaymentDetail.objects.create(work=work, **det)
+        for det in accr_details:
+            AccrualDetail.objects.create(work=work, **det)
         return work
 
     def update(self, instance, validated_data):
-        details = validated_data.pop('payment_details', None)
+        pay_details = validated_data.pop('payment_details', None)
+        accr_details = validated_data.pop('accrual_details', None)
         work = super().update(instance, validated_data)
-        if details is not None:
+        if pay_details is not None:
             instance.payment_details.all().delete()
-            for det in details:
-                # Если файл комментария не передан, убираем ключ, чтобы не валидировать
+            for det in pay_details:
                 if det.get('comment_file') in (None, {}, ''):
                     det.pop('comment_file', None)
                 PaymentDetail.objects.create(work=work, **det)
+        if accr_details is not None:
+            instance.accrual_details.all().delete()
+            for det in accr_details:
+                if det.get('comment_file') in (None, {}, ''):
+                    det.pop('comment_file', None)
+                AccrualDetail.objects.create(work=work, **det)
         return work
 
     class Meta:
@@ -96,6 +119,7 @@ class WorkSerializer(serializers.ModelSerializer):
             "accruals", "payments",
             "actual_accruals", "actual_payments",
             "payment_details",
+            "accrual_details",
             "vat_rate",
             "feasibility",
             "materials",

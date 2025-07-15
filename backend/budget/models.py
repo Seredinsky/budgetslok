@@ -274,6 +274,46 @@ class PaymentDetail(models.Model):
         verbose_name_plural = "Детали оплат"
         unique_together = ("work", "month")
 
+class AccrualDetail(models.Model):
+    """Дополнительные детали фактических начислений для работы"""
+    work = models.ForeignKey(
+        Work,
+        related_name="accrual_details",
+        on_delete=models.CASCADE,
+        verbose_name="Работа"
+    )
+    month = models.CharField(
+        "Месяц",
+        max_length=3
+    )
+    amount = models.DecimalField(
+        "Сумма факта",
+        max_digits=12,
+        decimal_places=2
+    )
+    closing_document = models.CharField(
+        "Документ закрытия",
+        max_length=255,
+        blank=True
+    )
+    comment = models.TextField(
+        "Комментарий",
+        blank=True
+    )
+    comment_file = models.FileField(
+        "Файл комментария",
+        upload_to="accrual_comments/",
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        verbose_name = "Деталь начисления"
+        verbose_name_plural = "Детали начислений"
+        unique_together = ("work", "month")
+
+    def __str__(self):
+        return f"{self.work} [{self.month}] {self.amount}"
 
 class Material(models.Model):
     work       = models.ForeignKey(Work, related_name="materials",

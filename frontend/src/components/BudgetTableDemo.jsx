@@ -414,6 +414,21 @@ const BudgetTableDemo = () => {
       next[idx] = { ...next[idx], [key]: value };
       return next;
     });
+    // детали начислений
+    const [accrualDetails, setAccrualDetails] = useState([]);
+    const [showAccrualDetailFlags, setShowAccrualDetailFlags] = useState([]);
+    const toggleShowAccrualDetail = (idx) =>
+      setShowAccrualDetailFlags(prev => {
+        const next = [...prev];
+        next[idx] = !next[idx];
+        return next;
+      });
+    const updateAccrualDetail = (idx, key, value) =>
+      setAccrualDetails(prev => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], [key]: value };
+        return next;
+      });
   const [materials, setMaterials] = useState([]); // [{ name }]
   const [year, setYear] = useState(currentYear);
   const [responsible, setResponsible] = useState("");
@@ -510,6 +525,8 @@ const BudgetTableDemo = () => {
       setResponsible(user?.id ? String(user.id) : "");
       setMaterials([]);
       setAccrualRows([{ month: "", amount: "", checked: false, actual: "" }]);
+      setAccrualDetails([{ month: "", amount: "", closing_document: "", comment: "", comment_file: null }]);
+      setShowAccrualDetailFlags([false]);
       setPaymentRows([{ month: "", amount: "", checked: false, actual: "" }]);
       setPaymentDetails([{
         month: "",
@@ -546,6 +563,15 @@ const BudgetTableDemo = () => {
       setWorkArticleId(article.id);
       setMaterials(w.materials || []);
       setAccrualRows(objToRows(w.accruals, w.actual_accruals));
+      setAccrualDetails((w.accrual_details || []).map(d => ({
+        id: d.id,
+        month: d.month,
+        amount: String(d.amount),
+        closing_document: d.closing_document || "",
+        comment: d.comment || "",
+        comment_file: d.comment_file || null,
+      })));
+      setShowAccrualDetailFlags((w.accrual_details || []).map(() => false));
       setPaymentRows(objToRows(w.payments, w.actual_payments));
       setPaymentDetails(
         (w.payment_details || []).map(d => ({
@@ -687,6 +713,16 @@ const BudgetTableDemo = () => {
         mm: det.mm,
         payment_document: det.payment_document,
         payment_close: det.payment_close,
+        comment: det.comment,
+        comment_file: det.comment_file,
+      })),
+      accrual_details: accrualDetails.map((det, idx) => ({
+        id: det.id,
+        month: accrualRows[idx].month,
+        amount: accrualRows[idx].checked
+          ? Number(accrualRows[idx].actual)
+          : Number(accrualRows[idx].amount),
+        closing_document: det.closing_document,
         comment: det.comment,
         comment_file: det.comment_file,
       })),
@@ -1953,6 +1989,7 @@ const BudgetTableDemo = () => {
                             placeholder="Кредитор"
                           />
                         </div>
+
                         <div className="mb-2">
                           <label className="block text-xs font-medium mb-1">Договор</label>
                           <Input
@@ -2071,7 +2108,16 @@ const BudgetTableDemo = () => {
                       placeholder="План"
                       className="w-28"
                       value={row.amount}
-                      onChange={(e) => updateRow(setAccrualRows, idx, "amount", e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        updateRow(setAccrualRows, idx, "amount", val);
+                        // update gross payment amount (including VAT)
+                        const gross = vatRate
+                          ? (Number(val) * (1 + vatRate / 100)).toFixed(2)
+                          : val;
+                        updateRow(setPaymentRows, idx, "amount", gross);
+                        updateAccrualDetail(idx, "amount", val);
+                      }}
                       disabled={transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]}
                     />
                     <label className="flex items-center text-sm">
@@ -2085,16 +2131,37 @@ const BudgetTableDemo = () => {
                       Факт
                     </label>
                     {row.checked && (
-                      <Input
-                        type="number"
-                        placeholder="Факт"
-                        className="w-28"
-                        value={row.actual}
-                        onChange={(e) => updateRow(setAccrualRows, idx, "actual", e.target.value)}
-                        disabled={transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]}
-                      />
+                      <div className="flex items-center">
+                        <Input
+                          type="number"
+                          placeholder="Факт"
+                          className="w-28"
+                          value={row.actual}
+                          onChange={e => updateRow(setAccrualRows, idx, "actual", e.target.value)}
+                          disabled={transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]}
+                        />
+                        <div
+                          onClick={e => { e.stopPropagation(); toggleShowAccrualDetail(idx); }}
+                          className="cursor-pointer ml-2"
+                        >
+                          {showAccrualDetailFlags[idx] ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </div>
+                      </div>
                     )}
-                    <Button size="icon" variant="ghost" onClick={() => delRow(setAccrualRows, idx)} disabled={transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]}>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        delRow(setAccrualRows, idx);
+                        delRow(setPaymentRows, idx);
+                        setAccrualDetails(prev => prev.filter((_, i) => i !== idx));
+                      }}
+                      disabled={transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                     <Button
@@ -2131,9 +2198,46 @@ const BudgetTableDemo = () => {
                     {transferAccrualChecks[row.month] && !cancelAccrualChecks[row.month] && (
                       <span className="italic text-gray-500 ml-2">Перенос</span>
                     )}
+                    {row.checked && showAccrualDetailFlags[idx] && (
+                      <div className="w-full bg-gray-50 p-4 rounded mb-4">
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">Документ закрытия</label>
+                          <Input
+                            value={accrualDetails[idx]?.closing_document || ""}
+                            onChange={e => updateAccrualDetail(idx, 'closing_document', e.target.value)}
+                            placeholder="Документ закрытия"
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">Комментарий</label>
+                          <textarea
+                            className="w-full border rounded p-2 text-sm"
+                            value={accrualDetails[idx]?.comment || ""}
+                            onChange={e => updateAccrualDetail(idx, 'comment', e.target.value)}
+                            placeholder="Комментарий"
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">Файл комментария</label>
+                          <Input
+                            type="file"
+                            onChange={e => updateAccrualDetail(idx, 'comment_file', e.target.files[0])}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
-                <Button variant="secondary" size="sm" onClick={() => addRow(setAccrualRows)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => {
+                    addRow(setAccrualRows);
+                    setAccrualDetails(prev => [...prev, { month: "", amount: "", closing_document: "", comment: "", comment_file: null }]);
+                    setShowAccrualDetailFlags(prev => [...prev, false]);
+                  }}
+                >
                   <Plus className="w-4 h-4 mr-1" /> Добавить строку
                 </Button>
               </section>
