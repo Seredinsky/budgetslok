@@ -2066,11 +2066,29 @@ const BudgetTableDemo = () => {
                   </div>
                 ))}
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
+                  className="mt-2"
                   onClick={() => {
                     addRow(setPaymentRows);
-                    addRow(setAccrualRows);
+                    setPaymentDetails(prev => [
+                      ...prev,
+                      {
+                        month: "",
+                        amount: "",
+                        creditor: "",
+                        contract: "",
+                        pfm: "11000900",
+                        fp: String(workArticleId),
+                        mvz: "",
+                        mm: "",
+                        payment_document: "",
+                        payment_close: "",
+                        comment: "",
+                        comment_file: null,
+                      }
+                    ]);
+                    setShowPaymentDetailFlags(prev => [...prev, false]);
                   }}
                 >
                   <Plus className="w-4 h-4 mr-1" /> Добавить строку
