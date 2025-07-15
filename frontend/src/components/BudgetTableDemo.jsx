@@ -406,6 +406,13 @@ const BudgetTableDemo = () => {
   const [paymentRows, setPaymentRows] = useState([]);
   const [vatRate, setVatRate] = useState(0);
   const [feasibility, setFeasibility] = useState("green");
+  const [certification, setCertification] = useState(false);
+  const [workType, setWorkType] = useState("");
+  const [productName, setProductName] = useState("");
+  const [responsibleSlok, setResponsibleSlok] = useState("");
+  const [responsibleDpm, setResponsibleDpm] = useState("");
+  const [certificateNumber, setCertificateNumber] = useState("");
+  const [certificationBody, setCertificationBody] = useState("");
  
 
   // ──────────── Helpers ────────────
@@ -489,6 +496,13 @@ const BudgetTableDemo = () => {
       setPaymentRows([{ month: "", amount: "", checked: false, actual: "" }]);
       setVatRate(0);
       setFeasibility("green");
+      setCertification(false);
+      setWorkType("");
+      setProductName("");
+      setResponsibleSlok("");
+      setResponsibleDpm("");
+      setCertificateNumber("");
+      setCertificationBody("");
     } else {
       // editing existing work
       w = article.works[workIdx];
@@ -503,6 +517,13 @@ const BudgetTableDemo = () => {
       setPaymentRows(objToRows(w.payments, w.actual_payments));
       setVatRate(w.vat_rate || 0);
       setFeasibility(w.feasibility || "green");
+      setCertification(w.certification || false);
+      setWorkType(w.work_type || "");
+      setProductName(w.product_name || "");
+      setResponsibleSlok(w.responsible_slok || "");
+      setResponsibleDpm(w.responsible_dpm || "");
+      setCertificateNumber(w.certificate_number || "");
+      setCertificationBody(w.certification_body || "");
       // initialize separate cancel/transfer flags for accruals and payments
       const initCancelAcc = {};
       const initTransferAcc = {};
@@ -590,6 +611,13 @@ const BudgetTableDemo = () => {
       ),
       justification,
       comment,
+      certification,
+      work_type: workType,
+      product_name: productName,
+      responsible_slok: responsibleSlok,
+      responsible_dpm: responsibleDpm,
+      certificate_number: certificateNumber,
+      certification_body: certificationBody,
       year,
       responsible,
       vat_rate: vatRate,
@@ -1542,6 +1570,83 @@ const BudgetTableDemo = () => {
                   placeholder="Дополнительные сведения"
                 ></textarea>
               </div>
+
+              {/* Certification fields */}
+              <div>
+                <label className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    checked={certification}
+                    onChange={(e) => setCertification(e.target.checked)}
+                    className="mr-2"
+                  />
+                  Сертификация
+                </label>
+              </div>
+              {certification && (
+                <>
+                  <div>
+                    <label className="block text-sm mb-1 font-medium">Вид работы</label>
+                    <Select value={workType} onValueChange={(v) => setWorkType(v)}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Выберите вид работы" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ИК_СС_ТР_ТС">ИК СС ТР ТС</SelectItem>
+                        <SelectItem value="ИК_СС_ГОСТ">ИК СС ГОСТ</SelectItem>
+                        <SelectItem value="СС_ТР_ТС">СС ТР ТС</SelectItem>
+                        <SelectItem value="ДС_ТР_ТС">ДС ТР ТС</SelectItem>
+                        <SelectItem value="СС_ПБ">СС ПБ</SelectItem>
+                        <SelectItem value="СС_ГОСТ">СС ГОСТ</SelectItem>
+                        <SelectItem value="НОТИФИКАЦИЯ">Нотификация</SelectItem>
+                        <SelectItem value="СГР">СГР</SelectItem>
+                        <SelectItem value="МИНПРОМТОРГ">МИНПРОМТОРГ</SelectItem>
+                        <SelectItem value="УТСИ">УТСИ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1 font-medium">Наименование продукта</label>
+                    <Input
+                      value={productName}
+                      onChange={(e) => setProductName(e.target.value)}
+                      placeholder="Введите наименование"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1 font-medium">Ответственный от СлОК</label>
+                    <Input
+                      value={responsibleSlok}
+                      onChange={(e) => setResponsibleSlok(e.target.value)}
+                      placeholder="Введите имя"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1 font-medium">Ответственный от ДПМ</label>
+                    <Input
+                      value={responsibleDpm}
+                      onChange={(e) => setResponsibleDpm(e.target.value)}
+                      placeholder="Введите имя"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1 font-medium">№ сертификата (для ИК)</label>
+                    <Input
+                      value={certificateNumber}
+                      onChange={(e) => setCertificateNumber(e.target.value)}
+                      placeholder="Введите номер"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1 font-medium">Орган по сертификации</label>
+                    <Input
+                      value={certificationBody}
+                      onChange={(e) => setCertificationBody(e.target.value)}
+                      placeholder="Введите название"
+                    />
+                  </div>
+                </>
+              )}
 
               {/* Feasibility (traffic light) */}
               <div>

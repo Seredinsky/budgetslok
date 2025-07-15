@@ -30,6 +30,64 @@ class BudgetItem(models.Model):
         on_delete=models.PROTECT
     )
 
+    certification = models.BooleanField(
+        default=False,
+        verbose_name="Сертификация",
+        help_text="Отмечается, если требуется сертификация"
+    )
+
+    WORK_TYPE_CHOICES = [
+        ('ИК_СС_ТР_ТС', 'ИК СС ТР ТС'),
+        ('ИК_СС_ГОСТ', 'ИК СС ГОСТ'),
+        ('СС_ТР_ТС',    'СС ТР ТС'),
+        ('ДС_ТР_ТС',    'ДС ТР ТС'),
+        ('СС_ПБ',       'СС ПБ'),
+        ('СС_ГОСТ',     'СС ГОСТ'),
+        ('НОТИФИКАЦИЯ','Нотификация'),
+        ('СГР',         'СГР'),
+        ('МИНПРОМТОРГ','МИНПРОМТОРГ'),
+        ('УТСИ',        'УТСИ'),
+    ]
+
+    work_type = models.CharField(
+        max_length=20,
+        choices=WORK_TYPE_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name="Вид работы"
+    )
+
+    product_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Наименование продукта"
+    )
+    responsible_slok = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Ответственный от СлОК"
+    )
+    responsible_dpm = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Ответственный от ДПМ"
+    )
+    certificate_number = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="№ сертификата (для ИК)"
+    )
+    certification_body = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Орган по сертификации"
+    )
+
     def __str__(self):
         return self.name
 
