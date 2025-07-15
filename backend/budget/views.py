@@ -3,13 +3,14 @@ from rest_framework import permissions
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 
-from .models import BudgetItem, Work, Material, QuarterReserve
+from .models import BudgetItem, Work, Material, QuarterReserve, PaymentDetail
 from .serializers import (
     BudgetItemSerializer,
     WorkSerializer,
     MaterialSerializer,
     ReserveSerializer,
     UserLightSerializer,
+    PaymentDetailSerializer,
 )
 
 from rest_framework.decorators import action
@@ -96,6 +97,11 @@ class WorkViewSet(viewsets.ModelViewSet):
     queryset = Work.objects.all()          
     serializer_class = WorkSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrCanEditAny]
+    parser_classes = (
+        parsers.JSONParser,
+        parsers.MultiPartParser,
+        parsers.FormParser,
+    )
 
     def get_queryset(self):
         qs = Work.objects.all()
@@ -110,6 +116,14 @@ class WorkViewSet(viewsets.ModelViewSet):
             serializer.save()
         else:
             serializer.save(responsible=self.request.user)
+
+    def perform_update(self, serializer):
+        work = self.get_object()
+        # Разрешаем обновление только создателю или при наличии специального права
+        if not self.request.user.has_perm('budget.change_any_work') \
+           and work.responsible_id != self.request.user.id:
+            raise permissions.PermissionDenied('Нельзя редактировать чужую работу')
+        serializer.save()
 
 class MaterialViewSet(viewsets.ModelViewSet):
     queryset = Material.objects.all()
@@ -127,6 +141,21 @@ class MaterialViewSet(viewsets.ModelViewSet):
            and work.responsible_id != self.request.user.id:
             raise permissions.PermissionDenied("Нельзя прикрепить к чужой работе")
 
+        serializer.save(work=work)
+
+class PaymentDetailViewSet(viewsets.ModelViewSet):
+    """CRUD для деталей оплаты"""
+    queryset = PaymentDetail.objects.select_related('work')
+    serializer_class = PaymentDetailSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrCanEditAny]
+    parser_classes = (parsers.MultiPartParser, parsers.FormParser)
+
+    def perform_create(self, serializer):
+        work_id = self.request.data.get('work')
+        work = get_object_or_404(Work, pk=work_id)
+        # проверяем права на работу
+        if not self.request.user.has_perm('budget.change_any_work') and work.responsible_id != self.request.user.id:
+            raise permissions.PermissionDenied('Нельзя создать деталь оплаты для чужой работы')
         serializer.save(work=work)
 
 class ReserveViewSet(viewsets.ModelViewSet):

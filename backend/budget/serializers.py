@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import BudgetItem, Work, Material, QuarterReserve
+from .models import BudgetItem, Work, Material, QuarterReserve, PaymentDetail
 from .models import Group
 from django.contrib.auth.models import User
 
@@ -9,6 +9,21 @@ class MaterialSerializer(serializers.ModelSerializer):
         model = Material
         fields = ("id", "file", "uploaded_at")
 
+
+class PaymentDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentDetail
+        fields = (
+            'id', 'month', 'amount',
+            'creditor', 'contract', 'pfm', 'fp',
+            'mvz', 'mm', 'payment_document',
+            'payment_close', 'comment', 'comment_file'
+        )
+        read_only_fields = ('id',)
+        extra_kwargs = {
+            'month': {'required': False},
+            'amount': {'required': False},
+        }
 
 class UserLightSerializer(serializers.ModelSerializer):
     """Лёгкий сериализатор пользователя для справочника/read-only."""
@@ -35,6 +50,7 @@ class WorkSerializer(serializers.ModelSerializer):
         queryset=User.objects.all()
     )
     materials = MaterialSerializer(many=True, read_only=True)
+    payment_details = PaymentDetailSerializer(many=True, required=False)
     # Include parent item's group details
     group = GroupSerializer(source="item.group", read_only=True)
 
@@ -42,6 +58,25 @@ class WorkSerializer(serializers.ModelSerializer):
         choices=Work.FEASIBILITY_CHOICES,
         default='green'
     )
+
+    def create(self, validated_data):
+        details = validated_data.pop('payment_details', [])
+        work = super().create(validated_data)
+        for det in details:
+            PaymentDetail.objects.create(work=work, **det)
+        return work
+
+    def update(self, instance, validated_data):
+        details = validated_data.pop('payment_details', None)
+        work = super().update(instance, validated_data)
+        if details is not None:
+            instance.payment_details.all().delete()
+            for det in details:
+                # Если файл комментария не передан, убираем ключ, чтобы не валидировать
+                if det.get('comment_file') in (None, {}, ''):
+                    det.pop('comment_file', None)
+                PaymentDetail.objects.create(work=work, **det)
+        return work
 
     class Meta:
         model = Work
@@ -51,6 +86,7 @@ class WorkSerializer(serializers.ModelSerializer):
             "name", "justification", "comment",
             "accruals", "payments",
             "actual_accruals", "actual_payments",
+            "payment_details",
             "vat_rate",
             "feasibility",
             "materials",

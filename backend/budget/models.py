@@ -11,8 +11,11 @@ class Group(models.Model):
         verbose_name = "Группа статьи"
         verbose_name_plural = "Группы статей"
 
+
     def __str__(self):
         return self.name
+
+
 
 class BudgetItem(models.Model):
     """Статья бюджета (ИТ-Инфраструктура, Маркетинг …)"""
@@ -155,6 +158,78 @@ class Work(models.Model):
 
     def __str__(self):
         return self.name
+# --- PaymentDetail model ---
+class PaymentDetail(models.Model):
+    """Дополнительные детали фактических оплат для работы"""
+    work = models.ForeignKey(
+        Work,
+        related_name="payment_details",
+        on_delete=models.CASCADE,
+        verbose_name="Работа"
+    )
+    month = models.CharField(
+        "Месяц",
+        max_length=3
+    )
+    amount = models.DecimalField(
+        "Сумма факта",
+        max_digits=12,
+        decimal_places=2
+    )
+    creditor = models.CharField(
+        "Кредитор",
+        max_length=255,
+        blank=True
+    )
+    contract = models.CharField(
+        "Договор",
+        max_length=255,
+        blank=True
+    )
+    pfm = models.CharField(
+        "ПФМ",
+        max_length=20,
+        default="11000900"
+    )
+    fp = models.CharField(
+        "ФП",
+        max_length=50
+    )
+    mvz = models.CharField(
+        "МВЗ",
+        max_length=255,
+        blank=True
+    )
+    mm = models.CharField(
+        "ММ",
+        max_length=255,
+        blank=True
+    )
+    payment_document = models.CharField(
+        "Документ на оплату",
+        max_length=255,
+        blank=True
+    )
+    payment_close = models.CharField(
+        "Закрытие оплаты",
+        max_length=255,
+        blank=True
+    )
+    comment = models.TextField(
+        "Комментарий",
+        blank=True
+    )
+    comment_file = models.FileField(
+        "Файл комментария",
+        upload_to="payment_comments/",
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        verbose_name = "Деталь оплаты"
+        verbose_name_plural = "Детали оплат"
+        unique_together = ("work", "month")
 
 
 class Material(models.Model):

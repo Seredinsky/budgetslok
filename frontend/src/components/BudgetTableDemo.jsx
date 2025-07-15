@@ -17,6 +17,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Plus, Trash2, Paperclip, X, CheckCircle, Repeat } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { api as axios } from "@/api/axios";
 
 import clsx from "clsx";
@@ -397,6 +398,22 @@ const BudgetTableDemo = () => {
   const [workName, setWorkName] = useState("");
   const [justification, setJustification] = useState("");
   const [comment, setComment] = useState("");
+  // вложенные детали фактических оплат
+  const [paymentDetails, setPaymentDetails] = useState([]);
+  // флаги показа деталей оплат по строкам
+  const [showPaymentDetailFlags, setShowPaymentDetailFlags] = useState([]);
+  const toggleShowPaymentDetail = (idx) =>
+    setShowPaymentDetailFlags(prev => {
+      const next = [...prev];
+      next[idx] = !next[idx];
+      return next;
+    });
+  const updatePaymentDetail = (idx, key, value) =>
+    setPaymentDetails(prev => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [key]: value };
+      return next;
+    });
   const [materials, setMaterials] = useState([]); // [{ name }]
   const [year, setYear] = useState(currentYear);
   const [responsible, setResponsible] = useState("");
@@ -494,6 +511,21 @@ const BudgetTableDemo = () => {
       setMaterials([]);
       setAccrualRows([{ month: "", amount: "", checked: false, actual: "" }]);
       setPaymentRows([{ month: "", amount: "", checked: false, actual: "" }]);
+      setPaymentDetails([{
+        month: "",
+        amount: "",
+        creditor: "",
+        contract: "",
+        pfm: "11000900",
+        fp: String(article.id),
+        mvz: "",
+        mm: "",
+        payment_document: "",
+        payment_close: "",
+        comment: "",
+        comment_file: null,
+      }]);
+      setShowPaymentDetailFlags([false]);
       setVatRate(0);
       setFeasibility("green");
       setCertification(false);
@@ -515,6 +547,24 @@ const BudgetTableDemo = () => {
       setMaterials(w.materials || []);
       setAccrualRows(objToRows(w.accruals, w.actual_accruals));
       setPaymentRows(objToRows(w.payments, w.actual_payments));
+      setPaymentDetails(
+        (w.payment_details || []).map(d => ({
+          id: d.id,
+          month: d.month,
+          amount: String(d.amount),
+          creditor: d.creditor || "",
+          contract: d.contract || "",
+          pfm: d.pfm || "11000900",
+          fp: d.fp || "",
+          mvz: d.mvz || "",
+          mm: d.mm || "",
+          payment_document: d.payment_document || "",
+          payment_close: d.payment_close || "",
+          comment: d.comment || "",
+          comment_file: d.comment_file || null,
+        }))
+      );
+      setShowPaymentDetailFlags((w.payment_details || []).map(() => false));
       setVatRate(w.vat_rate || 0);
       setFeasibility(w.feasibility || "green");
       setCertification(w.certification || false);
@@ -623,6 +673,23 @@ const BudgetTableDemo = () => {
       vat_rate: vatRate,
       feasibility,
       materials,
+      payment_details: paymentDetails.map((det, idx) => ({
+        id: det.id,
+        month: paymentRows[idx].month,
+        amount: paymentRows[idx].checked
+          ? Number(paymentRows[idx].actual)
+          : Number(paymentRows[idx].amount),
+        creditor: det.creditor,
+        contract: det.contract,
+        pfm: det.pfm,
+        fp: det.fp,
+        mvz: det.mvz,
+        mm: det.mm,
+        payment_document: det.payment_document,
+        payment_close: det.payment_close,
+        comment: det.comment,
+        comment_file: det.comment_file,
+      })),
     };
 
     try {
@@ -1790,6 +1857,7 @@ const BudgetTableDemo = () => {
                           ? (Number(val) / (1 + vatRate / 100)).toFixed(2)
                           : val;
                         updateRow(setAccrualRows, idx, "amount", net);
+                        updatePaymentDetail(idx, "amount", val);
                       }}
                       disabled={transferPaymentChecks[row.month] || cancelPaymentChecks[row.month]}
                     />
@@ -1804,14 +1872,26 @@ const BudgetTableDemo = () => {
                       Факт
                     </label>
                     {row.checked && (
-                      <Input
-                        type="number"
-                        placeholder="Факт"
-                        className="w-28"
-                        value={row.actual}
-                        onChange={(e) => updateRow(setPaymentRows, idx, "actual", e.target.value)}
-                        disabled={transferPaymentChecks[row.month] || cancelPaymentChecks[row.month]}
-                      />
+                      <div className="flex items-center">
+                        <Input
+                          type="number"
+                          placeholder="Факт"
+                          className="w-28"
+                          value={row.actual}
+                          onChange={e => updateRow(setPaymentRows, idx, "actual", e.target.value)}
+                          disabled={transferPaymentChecks[row.month] || cancelPaymentChecks[row.month]}
+                        />
+                        <div
+                          onClick={e => { e.stopPropagation(); toggleShowPaymentDetail(idx); }}
+                          className="cursor-pointer ml-2"
+                        >
+                          {showPaymentDetailFlags[idx] ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </div>
+                      </div>
                     )}
                     <Button
                       size="icon"
@@ -1819,6 +1899,7 @@ const BudgetTableDemo = () => {
                       onClick={() => {
                         delRow(setPaymentRows, idx);
                         delRow(setAccrualRows, idx);
+                        setPaymentDetails(prev => prev.filter((_, i) => i !== idx));
                       }}
                       disabled={transferPaymentChecks[row.month] || cancelPaymentChecks[row.month]}
                     >
@@ -1857,6 +1938,89 @@ const BudgetTableDemo = () => {
                     )}
                     {transferPaymentChecks[row.month] && !cancelPaymentChecks[row.month] && (
                       <span className="italic text-gray-500 ml-2">Перенос</span>
+                    )}
+                    {row.checked && showPaymentDetailFlags[idx] && (
+                      <div className="w-full bg-gray-50 p-4 rounded mb-4">
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">Кредитор</label>
+                          <Input
+                            value={paymentDetails[idx]?.creditor || ""}
+                            onChange={e => updatePaymentDetail(idx, 'creditor', e.target.value)}
+                            placeholder="Кредитор"
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">Договор</label>
+                          <Input
+                            value={paymentDetails[idx]?.contract || ""}
+                            onChange={e => updatePaymentDetail(idx, 'contract', e.target.value)}
+                            placeholder="Договор"
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">ПФМ</label>
+                          <Input
+                            value={paymentDetails[idx]?.pfm || ""}
+                            onChange={e => updatePaymentDetail(idx, 'pfm', e.target.value)}
+                            placeholder="ПФМ"
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">ФП</label>
+                          <Input
+                            value={paymentDetails[idx]?.fp || ""}
+                            onChange={e => updatePaymentDetail(idx, 'fp', e.target.value)}
+                            placeholder="ФП"
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">МВЗ</label>
+                          <Input
+                            value={paymentDetails[idx]?.mvz || ""}
+                            onChange={e => updatePaymentDetail(idx, 'mvz', e.target.value)}
+                            placeholder="МВЗ"
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">ММ</label>
+                          <Input
+                            value={paymentDetails[idx]?.mm || ""}
+                            onChange={e => updatePaymentDetail(idx, 'mm', e.target.value)}
+                            placeholder="ММ"
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">Документ на оплату</label>
+                          <Input
+                            value={paymentDetails[idx]?.payment_document || ""}
+                            onChange={e => updatePaymentDetail(idx, 'payment_document', e.target.value)}
+                            placeholder="Документ на оплату"
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">Закрытие оплаты</label>
+                          <Input
+                            value={paymentDetails[idx]?.payment_close || ""}
+                            onChange={e => updatePaymentDetail(idx, 'payment_close', e.target.value)}
+                            placeholder="Закрытие оплаты"
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">Комментарий</label>
+                          <Input
+                            value={paymentDetails[idx]?.comment || ""}
+                            onChange={e => updatePaymentDetail(idx, 'comment', e.target.value)}
+                            placeholder="Комментарий"
+                          />
+                        </div>
+                        <div className="mb-2">
+                          <label className="block text-xs font-medium mb-1">Файл комментария</label>
+                          <Input
+                            type="file"
+                            onChange={e => updatePaymentDetail(idx, 'comment_file', e.target.files[0])}
+                          />
+                        </div>
+                      </div>
                     )}
                   </div>
                 ))}
