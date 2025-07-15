@@ -1637,14 +1637,12 @@ const BudgetTableDemo = () => {
                   placeholder="Дополнительные сведения"
                 ></textarea>
               </div>
-
-              {/* Certification fields */}
               <div>
                 <label className="flex items-center mb-2">
                   <input
                     type="checkbox"
                     checked={certification}
-                    onChange={(e) => setCertification(e.target.checked)}
+                    onChange={e => setCertification(e.target.checked)}
                     className="mr-2"
                   />
                   Сертификация
@@ -1652,9 +1650,10 @@ const BudgetTableDemo = () => {
               </div>
               {certification && (
                 <>
+                  {/* Вид работы */}
                   <div>
                     <label className="block text-sm mb-1 font-medium">Вид работы</label>
-                    <Select value={workType} onValueChange={(v) => setWorkType(v)}>
+                    <Select value={workType} onValueChange={v => setWorkType(v)}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Выберите вид работы" />
                       </SelectTrigger>
@@ -1672,43 +1671,48 @@ const BudgetTableDemo = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  {/* Наименование продукта */}
                   <div>
                     <label className="block text-sm mb-1 font-medium">Наименование продукта</label>
                     <Input
                       value={productName}
-                      onChange={(e) => setProductName(e.target.value)}
+                      onChange={e => setProductName(e.target.value)}
                       placeholder="Введите наименование"
                     />
                   </div>
+                  {/* Ответственный от СлОК */}
                   <div>
                     <label className="block text-sm mb-1 font-medium">Ответственный от СлОК</label>
                     <Input
                       value={responsibleSlok}
-                      onChange={(e) => setResponsibleSlok(e.target.value)}
+                      onChange={e => setResponsibleSlok(e.target.value)}
                       placeholder="Введите имя"
                     />
                   </div>
+                  {/* Ответственный от ДПМ */}
                   <div>
                     <label className="block text-sm mb-1 font-medium">Ответственный от ДПМ</label>
                     <Input
                       value={responsibleDpm}
-                      onChange={(e) => setResponsibleDpm(e.target.value)}
+                      onChange={e => setResponsibleDpm(e.target.value)}
                       placeholder="Введите имя"
                     />
                   </div>
+                  {/* № сертификата */}
                   <div>
                     <label className="block text-sm mb-1 font-medium">№ сертификата (для ИК)</label>
                     <Input
                       value={certificateNumber}
-                      onChange={(e) => setCertificateNumber(e.target.value)}
+                      onChange={e => setCertificateNumber(e.target.value)}
                       placeholder="Введите номер"
                     />
                   </div>
+                  {/* Орган по сертификации */}
                   <div>
                     <label className="block text-sm mb-1 font-medium">Орган по сертификации</label>
                     <Input
                       value={certificationBody}
-                      onChange={(e) => setCertificationBody(e.target.value)}
+                      onChange={e => setCertificationBody(e.target.value)}
                       placeholder="Введите название"
                     />
                   </div>

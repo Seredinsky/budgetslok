@@ -58,6 +58,14 @@ class WorkSerializer(serializers.ModelSerializer):
         choices=Work.FEASIBILITY_CHOICES,
         default='green'
     )
+    # Поля сертификации
+    certification = serializers.BooleanField(required=False)
+    work_type = serializers.CharField(required=False, allow_blank=True)
+    product_name = serializers.CharField(required=False, allow_blank=True)
+    responsible_slok = serializers.CharField(required=False, allow_blank=True)
+    responsible_dpm = serializers.CharField(required=False, allow_blank=True)
+    certificate_number = serializers.CharField(required=False, allow_blank=True)
+    certification_body = serializers.CharField(required=False, allow_blank=True)
 
     def create(self, validated_data):
         details = validated_data.pop('payment_details', [])
@@ -84,6 +92,7 @@ class WorkSerializer(serializers.ModelSerializer):
             "id", "item",
             "year", "responsible",
             "name", "justification", "comment",
+            "certification", "work_type", "product_name", "responsible_slok", "responsible_dpm", "certificate_number", "certification_body",
             "accruals", "payments",
             "actual_accruals", "actual_payments",
             "payment_details",

@@ -106,6 +106,49 @@ class Work(models.Model):
     justification = models.TextField(blank=True)
     comment = models.TextField(blank=True)
 
+    # Параметры сертификации для работы
+    certification = models.BooleanField(
+        default=False,
+        verbose_name="Сертификация"
+    )
+    work_type = models.CharField(
+        max_length=20,
+        choices=BudgetItem.WORK_TYPE_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name="Вид работы"
+    )
+    product_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Наименование продукта"
+    )
+    responsible_slok = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Ответственный от СлОК"
+    )
+    responsible_dpm = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Ответственный от ДПМ"
+    )
+    certificate_number = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="№ сертификата (для ИК)"
+    )
+    certification_body = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Орган по сертификации"
+    )
+
     # Планы и факты храним JSON-ом: {'Янв':1200, 'Мар':800}
     accruals = models.JSONField(default=dict)         # план Н
     payments = models.JSONField(default=dict)         # план О
