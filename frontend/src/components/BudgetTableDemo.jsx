@@ -437,6 +437,8 @@ const BudgetTableDemo = () => {
   const [accrualRows, setAccrualRows] = useState([]);
   const [paymentRows, setPaymentRows] = useState([]);
   const [vatRate, setVatRate] = useState(0);
+  // флаг автоматического расчета начислений на основе НДС
+  const [autoCalc, setAutoCalc] = useState(false);
   const [feasibility, setFeasibility] = useState("green");
   const [certification, setCertification] = useState(false);
   const [workType, setWorkType] = useState("");
@@ -1864,18 +1866,29 @@ const BudgetTableDemo = () => {
               {/* НДС */}
               <div className="mb-4">
                 <label className="block text-sm mb-1 font-medium">НДС</label>
-                <Select value={String(vatRate)} onValueChange={(v) => setVatRate(Number(v))}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue placeholder={`${vatRate}%`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[0, 5, 20].map((r) => (
-                      <SelectItem key={r} value={String(r)}>
-                        {r}%
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center space-x-4">
+                  <Select value={String(vatRate)} onValueChange={(v) => setVatRate(Number(v))}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder={`${vatRate}%`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[0, 5, 20].map((r) => (
+                        <SelectItem key={r} value={String(r)}>
+                          {r}%
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <label className="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={autoCalc}
+                      onChange={e => setAutoCalc(e.target.checked)}
+                      className="mr-2"
+                    />
+                    Авторасчет
+                  </label>
+                </div>
               </div>
 
               {/* PAYMENTS */}
@@ -1912,13 +1925,14 @@ const BudgetTableDemo = () => {
                       value={row.amount}
                       onChange={(e) => {
                         const val = e.target.value;
-                        // update gross payment amount (including VAT)
                         updateRow(setPaymentRows, idx, "amount", val);
-                        // calculate net accrual amount (excluding VAT)
-                        const net = vatRate
-                          ? (Number(val) / (1 + vatRate / 100)).toFixed(2)
-                          : val;
-                        updateRow(setAccrualRows, idx, "amount", net);
+                        // только при авторасчете обновляем начисление
+                        if (autoCalc) {
+                          const net = vatRate
+                            ? (Number(val) / (1 + vatRate / 100)).toFixed(2)
+                            : val;
+                          updateRow(setAccrualRows, idx, "amount", net);
+                        }
                         updatePaymentDetail(idx, "amount", val);
                       }}
                       disabled={transferPaymentChecks[row.month] || cancelPaymentChecks[row.month]}
@@ -1960,7 +1974,6 @@ const BudgetTableDemo = () => {
                       variant="ghost"
                       onClick={() => {
                         delRow(setPaymentRows, idx);
-                        delRow(setAccrualRows, idx);
                         setPaymentDetails(prev => prev.filter((_, i) => i !== idx));
                       }}
                       disabled={transferPaymentChecks[row.month] || cancelPaymentChecks[row.month]}
@@ -2214,7 +2227,6 @@ const BudgetTableDemo = () => {
                       variant="ghost"
                       onClick={() => {
                         delRow(setAccrualRows, idx);
-                        delRow(setPaymentRows, idx);
                         setAccrualDetails(prev => prev.filter((_, i) => i !== idx));
                       }}
                       disabled={transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]}
