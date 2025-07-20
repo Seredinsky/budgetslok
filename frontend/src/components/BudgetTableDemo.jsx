@@ -526,37 +526,13 @@ const BudgetTableDemo = () => {
       setWorkArticleId(article.id);
       setResponsible(user?.id ? String(user.id) : "");
       setMaterials([]);
-      setAccrualRows([{ month: "", amount: "", checked: false, actual: "" }]);
-      setAccrualDetails([
-        {
-          month: "",
-          amount: "",
-          closing_document: "",
-          comment: "",
-          comment_file: null,
-          cancel_reason: "",
-          transfer_reason: "",
-        }
-      ]);
-      setShowAccrualDetailFlags([false]);
-      setPaymentRows([{ month: "", amount: "", checked: false, actual: "" }]);
-      setPaymentDetails([{
-        month: "",
-        amount: "",
-        creditor: "",
-        contract: "",
-        pfm: "11000900",
-        fp: String(article.id),
-        mvz: "",
-        mm: "",
-        payment_document: "",
-        payment_close: "",
-        comment: "",
-        comment_file: null,
-        cancel_reason: "",
-        transfer_reason: "",
-      }]);
-      setShowPaymentDetailFlags([false]);
+      // start with no rows; user will add via buttons
+      setAccrualRows([]);
+      setAccrualDetails([]);
+      setShowAccrualDetailFlags([]);
+      setPaymentRows([]);
+      setPaymentDetails([]);
+      setShowPaymentDetailFlags([]);
       setVatRate(0);
       setFeasibility("green");
       setCertification(false);
