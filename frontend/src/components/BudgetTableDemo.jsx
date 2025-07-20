@@ -2185,7 +2185,7 @@ const BudgetTableDemo = () => {
                         const gross = vatRate
                           ? (Number(val) * (1 + vatRate / 100)).toFixed(2)
                           : val;
-                        updateRow(setPaymentRows, idx, "amount", gross);
+                        //updateRow(setPaymentRows, idx, "amount", gross);
                         updateAccrualDetail(idx, "amount", val);
                       }}
                       disabled={transferAccrualChecks[row.month] || cancelAccrualChecks[row.month]}
