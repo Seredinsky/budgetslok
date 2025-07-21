@@ -1476,6 +1476,7 @@ const BudgetTableDemo = () => {
                               const planTotal = (showAccruals ? planAcc : 0) + (showPayments ? planPay : 0);
                               const factTotal = (showAccruals ? factAcc : 0) + (showPayments ? factPay : 0);
                               const isEconomy = factTotal > 0 && factTotal < planTotal;
+                              const isOverlimit = planTotal > 0 && factTotal > planTotal;
                               // show tooltip only if any figure is non‑zero
                               const hasData = planAcc || planPay || factAcc || factPay;
                               const tooltipLines = hasData
@@ -1520,6 +1521,11 @@ const BudgetTableDemo = () => {
                                     {isEconomy && (
                                       <span className="inline-block text-xs italic text-gray-500 bg-green-100 px-1 rounded mt-1">
                                         Экономия
+                                      </span>
+                                    )}
+                                    {isOverlimit && (
+                                      <span className="inline-block text-xs italic text-gray-500 bg-red-100 px-1 rounded mt-1">
+                                        Перелимит
                                       </span>
                                     )}
                                   </div>
