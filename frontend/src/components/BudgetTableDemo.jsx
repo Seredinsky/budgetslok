@@ -1488,7 +1488,7 @@ const BudgetTableDemo = () => {
                                     `Факт начисл.: ${factAcc.toLocaleString("ru-RU")}`,
                                     `Факт оплат: ${factPay.toLocaleString("ru-RU")}`,
                                     work.justification ? `Обоснование: ${work.justification}` : null,
-                                    work.responsible ? `Ответственный: ${work.responsible}` : null,
+                                    work.responsible ? `Ответственный: ${userName(work.responsible)}` : null,
                                   ]
                                     .filter(Boolean)
                                     .join("\n")
