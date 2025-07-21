@@ -138,7 +138,7 @@ class WorkSerializer(serializers.ModelSerializer):
 
 class BudgetItemSerializer(serializers.ModelSerializer):
     group = GroupSerializer(read_only=True)
-    works = WorkSerializer(many=True, read_only=True)
+    works = WorkSerializer(source='detailed_works', many=True, read_only=True)
 
     class Meta:
         model = BudgetItem

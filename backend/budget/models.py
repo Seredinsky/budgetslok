@@ -2,6 +2,14 @@ from django.db import models
 from django.utils import timezone
 from django.conf import settings
 
+class WorkQuerySet(models.QuerySet):
+    """QuerySet for Work model to prefetch related detail records."""
+    def with_details(self):
+        return self.prefetch_related(
+            'payment_details',
+            'accrual_details',
+        )
+
 class Group(models.Model):
     """Справочник групп статей бюджета."""
     code = models.CharField("Код группы", max_length=50, unique=True)
@@ -100,6 +108,7 @@ class BudgetItem(models.Model):
 
 class Work(models.Model):
     """Отдельная работа внутри статьи"""
+    objects = WorkQuerySet.as_manager()
     item = models.ForeignKey(BudgetItem, related_name="works",
                              on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
@@ -212,7 +221,8 @@ class PaymentDetail(models.Model):
     )
     month = models.CharField(
         "Месяц",
-        max_length=3
+        max_length=3,
+        db_index=True
     )
     amount = models.DecimalField(
         "Сумма факта",
@@ -282,6 +292,9 @@ class PaymentDetail(models.Model):
         verbose_name = "Деталь оплаты"
         verbose_name_plural = "Детали оплат"
         unique_together = ("work", "month")
+        indexes = [
+            models.Index(fields=['work', 'month']),
+        ]
 
 class AccrualDetail(models.Model):
     """Дополнительные детали фактических начислений для работы"""
@@ -293,7 +306,8 @@ class AccrualDetail(models.Model):
     )
     month = models.CharField(
         "Месяц",
-        max_length=3
+        max_length=3,
+        db_index=True
     )
     amount = models.DecimalField(
         "Сумма факта",
@@ -329,6 +343,9 @@ class AccrualDetail(models.Model):
         verbose_name = "Деталь начисления"
         verbose_name_plural = "Детали начислений"
         unique_together = ("work", "month")
+        indexes = [
+            models.Index(fields=['work', 'month']),
+        ]
 
     def __str__(self):
         return f"{self.work} [{self.month}] {self.amount}"

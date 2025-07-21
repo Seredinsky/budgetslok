@@ -2,6 +2,7 @@ from rest_framework import viewsets, parsers
 from rest_framework import permissions
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.db.models import Prefetch
 
 from .models import BudgetItem, Work, Material, QuarterReserve, PaymentDetail
 from .serializers import (
@@ -89,12 +90,18 @@ class CurrentUserView(APIView):
         )
 
 class BudgetItemViewSet(viewsets.ModelViewSet):
-    queryset = BudgetItem.objects.prefetch_related("works__materials")
+    queryset = BudgetItem.objects.prefetch_related(
+        Prefetch(
+            'works',
+            queryset=Work.objects.with_details().prefetch_related('materials'),
+            to_attr='detailed_works'
+        )
+    )
     serializer_class = BudgetItemSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 class WorkViewSet(viewsets.ModelViewSet):
-    queryset = Work.objects.all()          
+    queryset = Work.objects.with_details()
     serializer_class = WorkSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrCanEditAny]
     parser_classes = (
@@ -104,7 +111,7 @@ class WorkViewSet(viewsets.ModelViewSet):
     )
 
     def get_queryset(self):
-        qs = Work.objects.all()
+        qs = Work.objects.with_details()
         user = self.request.user
         if user.has_perm("budget.change_any_work"):
             return qs
