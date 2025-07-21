@@ -126,6 +126,11 @@ const BudgetTableDemo = () => {
   const [expandedArticles, setExpandedArticles] = useState([]);
   // переключатель "детально / только итоги" (удалено)
 
+  // loading states for initial data fetch
+  const [loadingItems, setLoadingItems] = useState(true);
+  const [loadingReserves, setLoadingReserves] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+
   const [mode, setMode] = useState("both"); // "plan" | "fact" | "both"
   // отображать начисления, оплаты или оба
   const [flowMode, setFlowMode] = useState("acc"); // "acc" | "pay" | "both"
@@ -354,17 +359,28 @@ const BudgetTableDemo = () => {
 
   // при монтировании тянем данные с бэкенда
   useEffect(() => {
-    axios.get(API).then(({ data }) => {
-      setData(data);
-      setSelectedArticles(data.map((it) => it.id));  // выбрать все по умолчанию
-      setExpandedArticles(data.map((it) => it.id)); // раскрыть все по умолчанию
-    });
-    // загружаем резервы
-    axios
-      .get("reserves/")
-      .then(({ data }) => setReserves(data));
-    // загружаем пользователей
-    axios.get("users/").then(({ data }) => setUsers(data));
+    setLoadingItems(true);
+    setLoadingReserves(true);
+    setLoadingUsers(true);
+
+    axios.get(API)
+      .then(({ data }) => {
+        setData(data);
+        setSelectedArticles(data.map((it) => it.id));
+        setExpandedArticles(data.map((it) => it.id));
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setLoadingItems(false));
+
+    axios.get("reserves/")
+      .then(({ data }) => setReserves(data))
+      .catch((err) => console.error(err))
+      .finally(() => setLoadingReserves(false));
+
+    axios.get("users/")
+      .then(({ data }) => setUsers(data))
+      .catch((err) => console.error(err))
+      .finally(() => setLoadingUsers(false));
   }, []);
   
   // переключение раскрытия конкретной статьи
@@ -899,6 +915,19 @@ const BudgetTableDemo = () => {
   };
 
   // ──────────── Render ────────────
+  const anyLoading = loadingItems || loadingReserves || loadingUsers;
+  if (anyLoading) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-white">
+        <div className="w-12 h-12 border-4 border-sky-600 border-t-transparent rounded-full animate-spin" />
+        <ul className="mt-4 text-center text-sm text-gray-700">
+          {loadingItems && <li>Загружаем статьи...</li>}
+          {loadingReserves && <li>Загружаем резервы...</li>}
+          {loadingUsers && <li>Загружаем пользователей...</li>}
+        </ul>
+      </div>
+    );
+  }
   return (
     <div className="fixed inset-0 overflow-auto">
 
