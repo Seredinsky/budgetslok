@@ -168,6 +168,8 @@ const BudgetTableDemo = () => {
       article.works.forEach((w) => {
         // Skip works with feasibility === "red"
         if (w.feasibility === "red") return;
+        // Apply 50% weight for yellow feasibility
+        const factor = w.feasibility === "yellow" ? 0.5 : 1;
         if (
           (yearFilter !== "all" && String(w.year) !== yearFilter) ||
           (respFilter !== "all" && String(w.responsible) !== String(respFilter))
@@ -176,10 +178,10 @@ const BudgetTableDemo = () => {
         }
 
         Object.entries(w.accruals || {}).forEach(([m, v]) => {
-          if (visibleMonths.includes(m)) planAcc += getAmt(v);
+          if (visibleMonths.includes(m)) planAcc += getAmt(v) * factor;
         });
         Object.entries(w.payments || {}).forEach(([m, v]) => {
-          if (visibleMonths.includes(m)) planPay += getAmt(v);
+          if (visibleMonths.includes(m)) planPay += getAmt(v) * factor;
         });
         Object.entries(w.actual_accruals || {}).forEach(([m, v]) => {
           if (visibleMonths.includes(m)) factAcc += getAmt(v);
@@ -887,13 +889,15 @@ const BudgetTableDemo = () => {
       let fPay = 0;
       article.works.forEach((w) => {
         if (w.feasibility === "red") return;
+        // Apply 50% weight for yellow feasibility
+        const factor = w.feasibility === "yellow" ? 0.5 : 1;
         const a = w.accruals || {};
         const p = w.payments || {};
         const fa = w.actual_accruals || {};
         const fp = w.actual_payments || {};
 
-        acc += getAmt(a[m]);
-        pay += getAmt(p[m]);
+        acc += getAmt(a[m]) * factor;
+        pay += getAmt(p[m]) * factor;
         fAcc += getAmt(fa[m]);
         fPay += getAmt(fp[m]);
       });
@@ -1494,11 +1498,15 @@ const BudgetTableDemo = () => {
                               const planPay = getAmt((work.payments || {})[m]);
                               const factAcc = getAmt((work.actual_accruals || {})[m]);
                               const factPay = getAmt((work.actual_payments || {})[m]);
-                              // economy detection
-                              const planTotal = (showAccruals ? planAcc : 0) + (showPayments ? planPay : 0);
+                              // Apply 50% weight for yellow feasibility
+                              const factor = work.feasibility === "yellow" ? 0.5 : 1;
+                              const dispPlanAcc = planAcc * factor;
+                              const dispPlanPay = planPay * factor;
+                              // economy detection using displayed plans
+                              const dispPlanTotal = (showAccruals ? dispPlanAcc : 0) + (showPayments ? dispPlanPay : 0);
                               const factTotal = (showAccruals ? factAcc : 0) + (showPayments ? factPay : 0);
-                              const isEconomy = factTotal > 0 && factTotal < planTotal;
-                              const isOverlimit = planTotal > 0 && factTotal > planTotal;
+                              const isEconomy = factTotal > 0 && factTotal < dispPlanTotal;
+                              const isOverlimit = dispPlanTotal > 0 && factTotal > dispPlanTotal;
                               // show tooltip only if any figure is non‑zero
                               const hasData = planAcc || planPay || factAcc || factPay;
                               const tooltipLines = hasData
@@ -1534,7 +1542,7 @@ const BudgetTableDemo = () => {
                                   {...(tooltipLines ? { title: tooltipLines } : {})}
                                 >
                                   <div className={clsx("flex flex-col items-end leading-tight", statusText && "italic text-gray-500")}>
-                                    {renderCell(planAcc, planPay, factAcc, factPay)}
+                                    {renderCell(dispPlanAcc, dispPlanPay, factAcc, factPay)}
                                     {statusText && (
                                       <span className="inline-block text-xs italic text-gray-500 bg-yellow-100 px-1 rounded mt-1">
                                         {statusText}
