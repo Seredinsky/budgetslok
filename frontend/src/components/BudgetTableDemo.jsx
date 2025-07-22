@@ -587,6 +587,10 @@ const BudgetTableDemo = () => {
           comment_file: d.comment_file || null,
           cancel_reason: d.cancel_reason || "",
           transfer_reason: d.transfer_reason || "",
+          // Причина корректировки начисления
+          correction_reason: d.correction_reason || "",
+          is_correction: d.is_correction || false,
+          // — конец корректировки —
         }))
       );
       setShowAccrualDetailFlags((w.accrual_details || []).map(() => false));
@@ -608,6 +612,10 @@ const BudgetTableDemo = () => {
           comment_file: d.comment_file || null,
           cancel_reason: d.cancel_reason || "",
           transfer_reason: d.transfer_reason || "",
+          // Причина корректировки оплаты
+          correction_reason: d.correction_reason || "",
+          is_correction: d.is_correction || false,
+          // — конец корректировки —
         }))
       );
       setShowPaymentDetailFlags((w.payment_details || []).map(() => false));
@@ -737,6 +745,10 @@ const BudgetTableDemo = () => {
         comment_file: det.comment_file,
         cancel_reason: det.cancel_reason,
         transfer_reason: det.transfer_reason,
+        // Корректировка оплаты
+        correction_reason: det.correction_reason,
+        is_correction: det.is_correction,
+        // — конец корректировки —
       })),
       accrual_details: accrualDetails.map((det, idx) => ({
         id: det.id,
@@ -749,6 +761,10 @@ const BudgetTableDemo = () => {
         comment_file: det.comment_file,
         cancel_reason: det.cancel_reason,
         transfer_reason: det.transfer_reason,
+        // Корректировка начисления
+        correction_reason: det.correction_reason,
+        is_correction: det.is_correction,
+        // — конец корректировки —
       })),
     };
 
@@ -896,8 +912,15 @@ const BudgetTableDemo = () => {
         const fa = w.actual_accruals || {};
         const fp = w.actual_payments || {};
 
-        acc += getAmt(a[m]) * factor;
-        pay += getAmt(p[m]) * factor;
+        // исключаем корректированные записи из расчётов
+        const corrAcc = (w.accrual_details || []).some(d => d.month === m && d.is_correction);
+        if (!corrAcc) {
+          acc += getAmt(a[m]) * factor;
+        }
+        const corrPay = (w.payment_details || []).some(d => d.month === m && d.is_correction);
+        if (!corrPay) {
+          pay += getAmt(p[m]) * factor;
+        }
         fAcc += getAmt(fa[m]);
         fPay += getAmt(fp[m]);
       });
@@ -1500,8 +1523,14 @@ const BudgetTableDemo = () => {
                               const factPay = getAmt((work.actual_payments || {})[m]);
                               // Apply 50% weight for yellow feasibility
                               const factor = work.feasibility === "yellow" ? 0.5 : 1;
-                              const dispPlanAcc = planAcc * factor;
-                              const dispPlanPay = planPay * factor;
+                            // проверяем флаг корректировки по деталям
+                            const corrAcc = work.accrual_details?.some(d => d.month === m && d.is_correction);
+                            const corrPay = work.payment_details?.some(d => d.month === m && d.is_correction);
+                            const statusAcc = work.accruals?.[m]?.status;
+                            const statusPay = work.payments?.[m]?.status;
+                            // Always show numbers regardless of correction
+                            const dispPlanAcc = planAcc * factor;
+                            const dispPlanPay = planPay * factor;
                               // economy detection using displayed plans
                               const dispPlanTotal = (showAccruals ? dispPlanAcc : 0) + (showPayments ? dispPlanPay : 0);
                               const factTotal = (showAccruals ? factAcc : 0) + (showPayments ? factPay : 0);
@@ -1524,12 +1553,21 @@ const BudgetTableDemo = () => {
                                     .join("\n")
                                 : null;
                               // statusText computation (new location)
+                              // статусы: отмена, перенос или корректировка
                               const statusParts = [];
-                              if (showAccruals && work.accruals?.[m]?.status && work.accruals[m].status !== "действ") {
-                                statusParts.push(work.accruals[m].status === "отмена" ? "Отмена" : "Перенос");
+                              // accrual status
+                              const stAcc = work.accruals?.[m]?.status;
+                              if (showAccruals) {
+                                if (stAcc === 'отмена') statusParts.push('Отмена');
+                                else if (stAcc === 'перенос') statusParts.push('Перенос');
+                                if (corrAcc) statusParts.push('Корр.');
                               }
-                              if (showPayments && work.payments?.[m]?.status && work.payments[m].status !== "действ") {
-                                statusParts.push(work.payments[m].status === "отмена" ? "Отмена" : "Перенос");
+                              // payments status
+                              const stPay = work.payments?.[m]?.status;
+                              if (showPayments) {
+                                if (stPay === 'отмена') statusParts.push('Отмена');
+                                else if (stPay === 'перенос') statusParts.push('Перенос');
+                                if (corrPay) statusParts.push('Корр.');
                               }
                               const statusText = statusParts.join(", ");
                               return (
@@ -1543,11 +1581,15 @@ const BudgetTableDemo = () => {
                                 >
                                   <div className={clsx("flex flex-col items-end leading-tight", statusText && "italic text-gray-500")}>
                                     {renderCell(dispPlanAcc, dispPlanPay, factAcc, factPay)}
-                                    {statusText && (
+                                    {statusText.includes('Корр.') ? (
+                                      <span className="inline-block text-xs italic text-blue-600 bg-blue-100 px-1 rounded mt-1">
+                                        {statusText}
+                                      </span>
+                                    ) : statusText ? (
                                       <span className="inline-block text-xs italic text-gray-500 bg-yellow-100 px-1 rounded mt-1">
                                         {statusText}
                                       </span>
-                                    )}
+                                    ) : null}
                                     {isEconomy && (
                                       <span className="inline-block text-xs italic text-gray-500 bg-green-100 px-1 rounded mt-1">
                                         Экономия
@@ -2078,6 +2120,17 @@ const BudgetTableDemo = () => {
                         onChange={e => updatePaymentDetail(idx, 'transfer_reason', e.target.value)}
                       />
                     )}
+                    {(cancelPaymentChecks[row.month] || transferPaymentChecks[row.month]) && (
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={paymentDetails[idx]?.is_correction || false}
+                          onChange={e => updatePaymentDetail(idx, 'is_correction', e.target.checked)}
+                          className="mr-2"
+                        />
+                        Корректировка
+                      </label>
+                    )}
                     {cancelPaymentChecks[row.month] && (
                       <span className="italic text-gray-500 ml-2">Отмена</span>
                     )}
@@ -2191,6 +2244,9 @@ const BudgetTableDemo = () => {
                         payment_close: "",
                         comment: "",
                         comment_file: null,
+                        // Инициализация полей корректировки
+                        correction_reason: "",
+                        is_correction: false,
                       }
                     ]);
                     setShowPaymentDetailFlags(prev => [...prev, false]);
@@ -2330,6 +2386,17 @@ const BudgetTableDemo = () => {
                         onChange={e => updateAccrualDetail(idx, 'transfer_reason', e.target.value)}
                       />
                     )}
+                    {(cancelAccrualChecks[row.month] || transferAccrualChecks[row.month]) && (
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={accrualDetails[idx]?.is_correction || false}
+                          onChange={e => updateAccrualDetail(idx, 'is_correction', e.target.checked)}
+                          className="mr-2"
+                        />
+                        Корректировка
+                      </label>
+                    )}
                     {cancelAccrualChecks[row.month] && (
                       <span className="italic text-gray-500 ml-2">Отмена</span>
                     )}
@@ -2372,7 +2439,19 @@ const BudgetTableDemo = () => {
                   className="mt-2"
                   onClick={() => {
                     addRow(setAccrualRows);
-                    setAccrualDetails(prev => [...prev, { month: "", amount: "", closing_document: "", comment: "", comment_file: null }]);
+                    setAccrualDetails(prev => [
+                      ...prev,
+                      {
+                        month: "",
+                        amount: "",
+                        closing_document: "",
+                        comment: "",
+                        comment_file: null,
+                        // Инициализация полей корректировки
+                        correction_reason: "",
+                        is_correction: false,
+                      }
+                    ]);
                     setShowAccrualDetailFlags(prev => [...prev, false]);
                   }}
                 >

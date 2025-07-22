@@ -19,6 +19,7 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
             'mvz', 'mm', 'payment_document',
             'payment_close', 'comment', 'comment_file',
             'cancel_reason', 'transfer_reason',
+            'correction_reason', 'is_correction',
         )
         read_only_fields = ('id',)
         extra_kwargs = {
@@ -26,6 +27,8 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
             'amount': {'required': False},
             'cancel_reason': {'required': False, 'allow_blank': True},
             'transfer_reason': {'required': False, 'allow_blank': True},
+            'correction_reason': {'required': False, 'allow_blank': True},
+            'is_correction': {'required': False},
         }
 
 class AccrualDetailSerializer(serializers.ModelSerializer):
@@ -35,6 +38,7 @@ class AccrualDetailSerializer(serializers.ModelSerializer):
             'id', 'month', 'amount',
             'closing_document', 'comment', 'comment_file',
             'cancel_reason', 'transfer_reason',
+            'correction_reason', 'is_correction',
         )
         read_only_fields = ('id',)
         extra_kwargs = {
@@ -42,6 +46,8 @@ class AccrualDetailSerializer(serializers.ModelSerializer):
             'amount': {'required': False},
             'cancel_reason': {'required': False, 'allow_blank': True},
             'transfer_reason': {'required': False, 'allow_blank': True},
+            'correction_reason': {'required': False, 'allow_blank': True},
+            'is_correction': {'required': False},
         }
 
 class UserLightSerializer(serializers.ModelSerializer):

@@ -288,6 +288,16 @@ class PaymentDetail(models.Model):
         blank=True
     )
 
+    # Причина корректировки оплаты
+    correction_reason = models.TextField(
+        "Причина корректировки оплаты",
+        blank=True
+    )
+    is_correction = models.BooleanField(
+        "Корректировка",
+        default=False
+    )
+
     class Meta:
         verbose_name = "Деталь оплаты"
         verbose_name_plural = "Детали оплат"
@@ -337,6 +347,16 @@ class AccrualDetail(models.Model):
     transfer_reason = models.TextField(
         "Причина переноса",
         blank=True
+    )
+
+    # Причина корректировки начисления
+    correction_reason = models.TextField(
+        "Причина корректировки",
+        blank=True
+    )
+    is_correction = models.BooleanField(
+        "Корректировка",
+        default=False
     )
 
     class Meta:
