@@ -108,6 +108,7 @@ const arrToFact = (rows) =>
   }, {});
 
 // ──────────── Компонент ────────────
+const primaryColorClass = 'bg-[rgb(237,28,36)]';
 const BudgetTableDemo = () => {
   // table state
   // имя текущего месяца (по индексам в monthKeys)
@@ -398,6 +399,8 @@ const BudgetTableDemo = () => {
 
   // dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
+  // dialog animation origin
+  const [dialogOrigin, setDialogOrigin] = useState({ x: 0, y: 0 });
   const [selected, setSelected] = useState(null); // { articleIdx, workIdx }
 
   // write-off reserve checkbox state
@@ -526,7 +529,10 @@ const BudgetTableDemo = () => {
   };
 
   // open dialog
-  const openDialog = (articleIdx, workIdx = null) => {
+  const openDialog = (articleIdx, workIdx = null, e) => {
+    if (e && e.clientX != null && e.clientY != null) {
+      setDialogOrigin({ x: e.clientX, y: e.clientY });
+    }
     setSelected({ articleIdx, workIdx });
 
     // prepare article and work for both new/edit modes
@@ -918,9 +924,20 @@ const BudgetTableDemo = () => {
   const anyLoading = loadingItems || loadingReserves || loadingUsers;
   if (anyLoading) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center bg-white">
-        <div className="w-12 h-12 border-4 border-sky-600 border-t-transparent rounded-full animate-spin" />
-        <ul className="mt-4 text-center text-sm text-gray-700">
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-transparent">
+        <div className="relative w-16 h-16">
+          {/* Outer ring */}
+          <div
+            className="absolute inset-0 rounded-full border-4 border-solid border-t-[rgb(237,28,36)] border-r-transparent border-b-transparent border-l-transparent animate-spin"
+          />
+          {/* Inner ring */}
+          <div
+            className="absolute inset-2 rounded-full border-4 border-solid border-t-[rgb(237,28,36)] border-r-transparent border-b-transparent border-l-transparent animate-spin"
+            style={{ animationDirection: 'reverse', animationDuration: '0.75s' }}
+          />
+        </div>
+        <p className="mt-4 text-lg font-medium text-[rgb(237,28,36)]">Загрузка данных...</p>
+        <ul className="mt-2 text-sm text-gray-500">
           {loadingItems && <li>Загружаем статьи...</li>}
           {loadingReserves && <li>Загружаем резервы...</li>}
           {loadingUsers && <li>Загружаем пользователей...</li>}
@@ -1070,7 +1087,7 @@ const BudgetTableDemo = () => {
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xs text-gray-500">Начисления</span>
                 <div className="flex items-end gap-2">
-                  <span className="text-lg font-semibold text-blue-600">
+                  <span className="text-lg font-semibold text-[rgb(237,28,36)]">
                     {globalTotals.acc.plan.toLocaleString("ru-RU")}₽
                   </span>
                   <span className="text-lg font-semibold text-emerald-600">
@@ -1109,7 +1126,7 @@ const BudgetTableDemo = () => {
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xs text-gray-500">Оплаты</span>
                 <div className="flex items-end gap-2">
-                  <span className="text-lg font-semibold text-blue-600">
+                  <span className="text-lg font-semibold text-[rgb(237,28,36)]">
                     {globalTotals.pay.plan.toLocaleString("ru-RU")}₽
                   </span>
                   <span className="text-lg font-semibold text-emerald-600">
@@ -1146,7 +1163,7 @@ const BudgetTableDemo = () => {
 
           {/* кнопка "Новая работа" создаёт работу в первую выбранную статью */}
           <Button
-            variant="default"
+            className={clsx(primaryColorClass, "text-white")}
             disabled={selectedArticles.length === 0}
             onClick={() => {
               const firstId = selectedArticles[0];
@@ -1167,7 +1184,9 @@ const BudgetTableDemo = () => {
               type="button"
               className={clsx(
                 "px-2 py-1 text-sm",
-                flowMode === m ? "bg-sky-600 text-white" : "bg-white hover:bg-sky-50"
+                flowMode === m
+                  ? `${primaryColorClass} text-white`
+                  : "bg-white hover:bg-[rgba(237,28,36,0.1)]"
               )}
               onClick={() => setFlowMode(m)}
             >
@@ -1182,7 +1201,9 @@ const BudgetTableDemo = () => {
               type="button"
               className={clsx(
                 "px-2 py-1 text-sm",
-                mode === m ? "bg-sky-600 text-white" : "bg-white hover:bg-sky-50"
+                mode === m
+                  ? `${primaryColorClass} text-white`
+                  : "bg-white hover:bg-[rgba(237,28,36,0.1)]"
               )}
               onClick={() => setMode(m)}
             >
@@ -1414,17 +1435,18 @@ const BudgetTableDemo = () => {
                         });
                         const hasAllFacts = hasAllFactAcc && hasAllFactPay;
                         return (
-                          <tr
-                            key={work.id}
-                            className={clsx(
-                              "cursor-pointer hover:bg-gray-50",
-                              wIdx === 0 && "border-t-2 border-gray-300"
-                            )}
-                            onClick={() => {
-                              const realWorkIdx = data[realArticleIdx].works.findIndex((w2) => w2.id === work.id);
-                              openDialog(realArticleIdx, realWorkIdx);
-                            }}
-                          >
+                      <tr
+                        key={work.id}
+                        className={clsx(
+                          "cursor-pointer hover:bg-gray-50",
+                          wIdx === 0 && "border-t-2 border-gray-300"
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const realWorkIdx = data[realArticleIdx].works.findIndex((w2) => w2.id === work.id);
+                          openDialog(realArticleIdx, realWorkIdx, e);
+                        }}
+                      >
                             {wIdx === 0 && (
                               <td
                                 rowSpan={expandedRowCount}
@@ -1600,7 +1622,19 @@ const BudgetTableDemo = () => {
       {/* ---------- DIALOG ---------- */}
       {dialogOpen && (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent size="md" className="px-4 py-4 overflow-x-hidden w-full max-w-[90vw] sm:max-w-[700px]">
+          {/* Inline keyframes for Apple-style dialog open */}
+          <style>{`
+            @keyframes appleOpen {
+              0% { opacity: 0; transform: scale(0.8); }
+              100% { opacity: 1; transform: scale(1); }
+            }
+          `}</style>
+          <DialogContent
+            forceMount
+            size="md"
+            className="px-4 py-4 overflow-x-hidden w-full max-w-[90vw] sm:max-w-[700px] transform"
+            style={{ transformOrigin: `${dialogOrigin.x}px ${dialogOrigin.y}px` }}
+          >
             <DialogHeader>
               <DialogTitle>
                 {selected?.workIdx === null ? "Новая работа" : "Редактирование работы"}
@@ -2398,8 +2432,11 @@ const BudgetTableDemo = () => {
       )}
       {/* floating add‑work FAB */}
       <Button
-        variant="default"
-        className="fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 p-0 shadow-lg bg-sky-600 hover:bg-sky-700 text-white"
+        className={clsx(
+          "fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 p-0 shadow-lg text-white",
+          primaryColorClass,
+          "hover:bg-[rgba(237,28,36,0.8)]"
+        )}
         onClick={handleAddWorkFab}
         title="Новая работа"
       >
