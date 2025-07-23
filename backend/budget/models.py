@@ -375,8 +375,21 @@ class AccrualDetail(models.Model):
         return f"{self.work} [{self.month}] {self.amount}"
 
 class Material(models.Model):
-    work       = models.ForeignKey(Work, related_name="materials",
-                                   on_delete=models.CASCADE)
+    work = models.ForeignKey(
+        Work,
+        related_name="materials",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+    item = models.ForeignKey(
+        BudgetItem,
+        related_name="materials",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name="Статья бюджета"
+    )
     file       = models.FileField(upload_to="materials/%Y/%m/")
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
@@ -397,3 +410,31 @@ class QuarterReserve(models.Model):
 
     class Meta:
         unique_together = ("item", "year", "quarter")
+
+
+# Файлы-отчеты, прикрепленные к статье бюджета.
+class ArticleReport(models.Model):
+    """
+    Файлы-отчеты, прикрепленные к статье бюджета.
+    """
+    item = models.ForeignKey(
+        BudgetItem,
+        related_name="reports",
+        on_delete=models.CASCADE,
+        verbose_name="Статья бюджета"
+    )
+    file = models.FileField(
+        upload_to="item_reports/%Y/%m",
+        verbose_name="Файл отчета"
+    )
+    uploaded_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Дата загрузки"
+    )
+
+    class Meta:
+        verbose_name = "Отчет по статье"
+        verbose_name_plural = "Отчеты по статьям бюджета"
+
+    def __str__(self):
+        return f"{self.item.name} - {self.file.name.split('/')[-1]}"

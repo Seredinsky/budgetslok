@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import BudgetItem, Work, Material, QuarterReserve, PaymentDetail, AccrualDetail
+from .models import BudgetItem, Work, Material, QuarterReserve, PaymentDetail, AccrualDetail, ArticleReport
 from .models import Group
 from django.contrib.auth.models import User
 
@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 class MaterialSerializer(serializers.ModelSerializer):
     class Meta:
         model = Material
-        fields = ("id", "file", "uploaded_at")
+        fields = ("id", "file", "uploaded_at", "work", "item")
 
 
 class PaymentDetailSerializer(serializers.ModelSerializer):
@@ -142,9 +142,16 @@ class WorkSerializer(serializers.ModelSerializer):
             "group",  # optional: include item group
         )
 
+
+class ArticleReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ArticleReport
+        fields = ("id", "file", "uploaded_at")
+
 class BudgetItemSerializer(serializers.ModelSerializer):
     group = GroupSerializer(read_only=True)
     works = WorkSerializer(source='detailed_works', many=True, read_only=True)
+    reports = ArticleReportSerializer(many=True, read_only=True)
 
     class Meta:
         model = BudgetItem
@@ -161,6 +168,7 @@ class BudgetItemSerializer(serializers.ModelSerializer):
             "certificate_number",
             "certification_body",
             "works",
+            "reports",
         )
 
 class ReserveSerializer(serializers.ModelSerializer):

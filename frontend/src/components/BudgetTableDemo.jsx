@@ -50,6 +50,7 @@ const getAmt = (v) => {
 
 const API = "items/";
 const MATERIALS_API = "materials/";
+const REPORTS_API = MATERIALS_API;
 
 /**
  * BudgetTableDemo.jsx – рабочая версия с поддержкой материалов
@@ -532,6 +533,41 @@ const BudgetTableDemo = () => {
 
       return next;
     });
+  };
+
+  // report handlers
+  const handleReportAdd = async (articleId, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = "";
+    const form = new FormData();
+    form.append("file", file);
+    form.append("item", articleId);
+    try {
+      const { data: report } = await axios.post(REPORTS_API, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setData(prev => prev.map(a => a.id === articleId
+        ? { ...a, reports: [...(a.reports || []), report] }
+        : a
+      ));
+    } catch (err) {
+      console.error(err);
+      alert("Не удалось загрузить отчет.");
+    }
+  };
+  const handleReportDelete = async (articleId, reportId) => {
+    if (!window.confirm("Удалить отчет?")) return;
+    try {
+      await axios.delete(`${REPORTS_API}${reportId}/`);
+      setData(prev => prev.map(a => a.id === articleId
+        ? { ...a, reports: a.reports.filter(r => r.id !== reportId) }
+        : a
+      ));
+    } catch (err) {
+      console.error(err);
+      alert("Не удалось удалить отчет.");
+    }
   };
 
   // open dialog
@@ -1455,6 +1491,46 @@ const BudgetTableDemo = () => {
                           >
                             <span className="mr-1">►</span>
                             {article.name}
+                            <div className="mt-2 text-xs">
+                              <span className="font-medium">Отчеты: </span>
+                              {(article.reports || []).map(r => (
+                                <span key={r.id} className="inline-flex items-center mr-1">
+                                  <a
+                                    href={`${BACKEND_ORIGIN}${r.file}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline"
+                                  >
+                                    {niceFileName(r.file)}
+                                  </a>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleReportDelete(article.id, r.id);
+                                    }}
+                                    className="ml-1 text-red-500"
+                                    title="Удалить отчет"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              ))}
+                              <label
+                                className="inline-flex items-center cursor-pointer text-red-500"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
+                                  type="file"
+                                  accept="*"
+                                  className="hidden"
+                                  onChange={e => {
+                                    e.stopPropagation();
+                                    handleReportAdd(article.id, e);
+                                  }}
+                                />
+                                <Plus className="w-3 h-3" />
+                              </label>
+                            </div>
                           </td>
                           {/* Blank filler for remaining columns */}
                           <td
@@ -1574,6 +1650,46 @@ const BudgetTableDemo = () => {
                               >
                                 <span className="mr-1">{expanded ? "▼" : "►"}</span>
                                 {article.name}
+                                <div className="mt-2 text-xs">
+                                  <span className="font-medium">Отчеты: </span>
+                                  {(article.reports || []).map(r => (
+                                    <span key={r.id} className="inline-flex items-center mr-1">
+                                      <a
+                                        href={`${BACKEND_ORIGIN}${r.file}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline"
+                                      >
+                                        {niceFileName(r.file)}
+                                      </a>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleReportDelete(article.id, r.id);
+                                        }}
+                                        className="ml-1 text-red-500"
+                                        title="Удалить отчет"
+                                      >
+                                        ×
+                                      </button>
+                                    </span>
+                                  ))}
+                                  <label
+                                    className="inline-flex items-center cursor-pointer text-red-500"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <input
+                                      type="file"
+                                      accept="*"
+                                      className="hidden"
+                                      onChange={e => {
+                                        e.stopPropagation();
+                                        handleReportAdd(article.id, e);
+                                      }}
+                                    />
+                                    <Plus className="w-3 h-3" />
+                                  </label>
+                                </div>
                               </td>
                             )}
                             <td className="border p-2 bg-white text-left w-56 max-w-[14rem] relative">

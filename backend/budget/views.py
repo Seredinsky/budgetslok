@@ -1,10 +1,10 @@
-from rest_framework import viewsets, parsers
+from rest_framework import viewsets, parsers, serializers
 from rest_framework import permissions
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
 
-from .models import BudgetItem, Work, Material, QuarterReserve, PaymentDetail
+from .models import BudgetItem, Work, Material, QuarterReserve, PaymentDetail, ArticleReport
 from .serializers import (
     BudgetItemSerializer,
     WorkSerializer,
@@ -12,6 +12,7 @@ from .serializers import (
     ReserveSerializer,
     UserLightSerializer,
     PaymentDetailSerializer,
+    ArticleReportSerializer,
 )
 
 from rest_framework.decorators import action
@@ -133,22 +134,27 @@ class WorkViewSet(viewsets.ModelViewSet):
         serializer.save()
 
 class MaterialViewSet(viewsets.ModelViewSet):
-    queryset = Material.objects.all()
+    queryset = Material.objects.select_related('work', 'item')
     serializer_class = MaterialSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrCanEditAny]
     parser_classes   = (parsers.MultiPartParser, parsers.FormParser)
 
-    # чтобы POST ожидал work-id
+    # чтобы POST ожидал work-id или item-id
     def perform_create(self, serializer):
         work_id = self.request.data.get("work")
-        work    = get_object_or_404(Work, pk=work_id)
+        item_id = self.request.data.get("item")
 
-        # разрешаем добавлять файл к работе, если пользователь имеет право
-        if not self.request.user.has_perm("budget.change_any_work") \
-           and work.responsible_id != self.request.user.id:
-            raise permissions.PermissionDenied("Нельзя прикрепить к чужой работе")
-
-        serializer.save(work=work)
+        if work_id:
+            obj = get_object_or_404(Work, pk=work_id)
+            if not self.request.user.has_perm("budget.change_any_work") \
+               and obj.responsible_id != self.request.user.id:
+                raise permissions.PermissionDenied("Нельзя прикрепить к чужой работе")
+            serializer.save(work=obj)
+        elif item_id:
+            obj = get_object_or_404(BudgetItem, pk=item_id)
+            serializer.save(item=obj)
+        else:
+            raise serializers.ValidationError("Нужно указать либо work, либо item")
 
 class PaymentDetailViewSet(viewsets.ModelViewSet):
     """CRUD для деталей оплаты"""
@@ -189,6 +195,20 @@ class ReserveViewSet(viewsets.ModelViewSet):
         reserve.save()
 
         return Response(self.get_serializer(reserve).data)
+
+
+# ---- Article Reports -------------------------------------------------
+class ArticleReportViewSet(viewsets.ModelViewSet):
+    """CRUD для файлов-отчетов статей бюджета"""
+    queryset = ArticleReport.objects.select_related('item')
+    serializer_class = ArticleReportSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (parsers.MultiPartParser, parsers.FormParser)
+
+    def perform_create(self, serializer):
+        item_id = self.request.data.get('item')
+        item = get_object_or_404(BudgetItem, pk=item_id)
+        serializer.save(item=item)
 
 # ---- Users -----------------------------------------------------------
 User = get_user_model()
