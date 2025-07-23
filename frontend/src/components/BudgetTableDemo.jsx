@@ -155,6 +155,9 @@ const BudgetTableDemo = () => {
     (_, idx) => showQuarterTotals[Math.floor(idx / 3)]
   );
 
+  // --- Sorting state for works ---
+  const [sortByDate, setSortByDate] = useState(false);
+
   // суммарный бюджет по выбранным фильтрам, раздельно для начислений и оплат
   const globalTotals = useMemo(() => {
     let planAcc = 0,
@@ -1238,6 +1241,20 @@ const BudgetTableDemo = () => {
             </button>
           ))}
         </div>
+        <div className="inline-flex rounded overflow-hidden border ml-2">
+          <button
+            type="button"
+            className={clsx(
+              "px-2 py-1 text-sm",
+              sortByDate
+                ? `${primaryColorClass} text-white`
+                : "bg-white hover:bg-[rgba(237,28,36,0.1)]"
+            )}
+            onClick={() => setSortByDate(!sortByDate)}
+          >
+            {sortByDate ? "Сортировать по срокам" : "Сортировать по срокам"}
+          </button>
+        </div>
         {activeFilterChips.length > 0 && (
           <div className="flex flex-wrap gap-2 ml-auto">
             {activeFilterChips.map((txt, idx) => (
@@ -1274,13 +1291,35 @@ const BudgetTableDemo = () => {
               (respFilter === "all" || String(w.responsible) === String(respFilter)) &&
               (allQuartersSelected || workHasVisibleData(w))
           );
+          // Determine work order by first month with data according to current mode and flowMode
+          const getWorkDateOrder = (w) => {
+            for (let i = 0; i < visibleMonths.length; i++) {
+              const m = visibleMonths[i];
+              const planAmt = (flowMode !== "pay" ? getAmt(w.accruals?.[m]) : 0)
+                            + (flowMode !== "acc" ? getAmt(w.payments?.[m]) : 0);
+              const factAmt = (flowMode !== "pay" ? getAmt(w.actual_accruals?.[m]) : 0)
+                            + (flowMode !== "acc" ? getAmt(w.actual_payments?.[m]) : 0);
+              const hasPlan = (mode !== "fact" && planAmt > 0);
+              const hasFact = (mode !== "plan" && factAmt > 0);
+              if ((mode === "both" && (hasPlan || hasFact)) ||
+                  (mode === "plan" && hasPlan) ||
+                  (mode === "fact" && hasFact)) {
+                return i;
+              }
+            }
+            return Infinity;
+          };
+          // Apply sorting if enabled
+          const worksList = sortByDate
+            ? [...filteredWorks].sort((a, b) => getWorkDateOrder(a) - getWorkDateOrder(b))
+            : filteredWorks;
           const { monthTotals, quarterTotals } = calcTotals({
             ...article,
-            works: filteredWorks,
+            works: worksList,
           });
           const expanded = expandedArticles.includes(article.id);
           // calculate how many rows this article will render when expanded
-          const baseRows = filteredWorks.length; // one row per work
+          const baseRows = worksList.length; // one row per work
           const totalsRows = 1 + (showQuarterTotals.some(Boolean) ? 1 : 0); // 1 for "Итого", +1 for quarterly totals if enabled
           const expandedRowCount = baseRows + totalsRows;
           // aggregated sums for collapsed view
@@ -1430,7 +1469,7 @@ const BudgetTableDemo = () => {
                       </>
                     )}
                     {expanded &&
-                      filteredWorks.map((work, wIdx) => {
+                      worksList.map((work, wIdx) => {
                         // calculate overall plan vs fact for this work, ignoring перенос in plan
                         const planSum =
                           Object.entries(work.accruals || {}).reduce((sum, [m, v]) => {
