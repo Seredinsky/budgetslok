@@ -112,8 +112,12 @@ class Work(models.Model):
     item = models.ForeignKey(BudgetItem, related_name="works",
                              on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
-    justification = models.TextField(blank=True)
-    comment = models.TextField(blank=True)
+    justification = models.TextField(
+        blank=True,
+        null=True)
+    comment = models.TextField(
+        blank=True,
+        null=True)
 
     # Параметры сертификации для работы
     certification = models.BooleanField(

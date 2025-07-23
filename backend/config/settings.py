@@ -33,6 +33,7 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 # Application definition
 
 INSTALLED_APPS = [
+    'import_export',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "budget"
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

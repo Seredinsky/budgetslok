@@ -1,5 +1,31 @@
 from django.contrib import admin
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin
+from import_export import fields
+from import_export.widgets import ForeignKeyWidget
 from .models import BudgetItem, Work, Material, QuarterReserve, Group
+from .models import BudgetItem
+
+class WorkResource(resources.ModelResource):
+    item = fields.Field(
+        column_name='item',
+        attribute='item',
+        widget=ForeignKeyWidget(BudgetItem, 'name')
+    )
+    class Meta:
+        model = Work
+        import_id_fields = ('id',)
+        # Required for import: id, item, name; other fields are optional
+        fields = (
+            'id', 'item', 'name', 'justification', 'comment',
+            'certification', 'work_type', 'product_name',
+            'responsible_slok', 'responsible_dpm',
+            'certificate_number', 'certification_body',
+            'accruals', 'payments',
+            'actual_accruals', 'actual_payments',
+            'year', 'responsible', 'vat_rate', 'feasibility',
+        )
+        export_order = fields
 
 class MaterialInline(admin.TabularInline):
     model = Material
@@ -21,7 +47,8 @@ class BudgetItemAdmin(admin.ModelAdmin):
     inlines = [WorkInline]
 
 @admin.register(Work)
-class WorkAdmin(admin.ModelAdmin):
+class WorkAdmin(ImportExportModelAdmin):
+    resource_class = WorkResource
     list_display = ("name", "item", "vat_rate", "responsible", "feasibility", "year")
     list_filter  = ("item", "vat_rate", "responsible", "feasibility", "year")
     search_fields = (
