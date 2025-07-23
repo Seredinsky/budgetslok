@@ -1492,37 +1492,48 @@ const BudgetTableDemo = () => {
                             <span className="mr-1">►</span>
                             {article.name}
                             <div className="mt-2 text-xs">
-                              <span className="font-medium">Отчеты: </span>
-                              {(article.reports || []).map(r => (
-                                <span key={r.id} className="inline-flex items-center mr-1">
-                                  <a
-                                    href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
-                                    download
-                                    className="underline text-[10px] break-words block"
+                              {article.reports && article.reports.length > 0 ? (
+                                <details className="mt-2 text-xs">
+                                  <summary
+                                    className="font-medium cursor-pointer"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    {niceFileName(r.file)}
-                                  </a>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleReportDelete(article.id, r.id);
-                                    }}
-                                    className="ml-1 text-red-500"
-                                    title="Удалить отчет"
-                                  >
-                                    ×
-                                  </button>
-                                </span>
-                              ))}
+                                    Отчеты ({article.reports.length})
+                                  </summary>
+                                  <div className="pl-4 mt-1 space-y-1 text-xs">
+                                    {article.reports.map((r) => (
+                                      <div key={r.id} className="break-words">
+                                        <a
+                                          href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
+                                          download
+                                          className="underline"
+                                        >
+                                          {niceFileName(r.file)}
+                                        </a>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleReportDelete(article.id, r.id);
+                                          }}
+                                          className="ml-1 text-red-500"
+                                          title="Удалить отчет"
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </details>
+                              ) : null}
                               <label
-                                className="inline-flex items-center cursor-pointer text-red-500"
+                                className="inline-flex items-center cursor-pointer text-red-500 mt-1"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <input
                                   type="file"
                                   accept="*"
                                   className="hidden"
-                                  onChange={e => {
+                                  onChange={(e) => {
                                     e.stopPropagation();
                                     handleReportAdd(article.id, e);
                                   }}
@@ -1650,43 +1661,54 @@ const BudgetTableDemo = () => {
                                 <span className="mr-1">{expanded ? "▼" : "►"}</span>
                                 {article.name}
                                 <div className="mt-2 text-xs">
-                                <span className="font-medium">Отчеты: </span>
-                                {(article.reports || []).map(r => (
-                                <span key={r.id} className="inline-flex items-center mr-1">
-                                  <a
-                                    href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
-                                    download
-                                    className="underline text-[10px] break-words block"
+                                  {article.reports && article.reports.length > 0 ? (
+                                    <details className="mt-2 text-xs">
+                                      <summary
+                                        className="font-medium cursor-pointer"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        Отчеты ({article.reports.length})
+                                      </summary>
+                                      <div className="pl-4 mt-1 space-y-1 text-xs">
+                                        {article.reports.map((r) => (
+                                          <div key={r.id} className="break-words">
+                                            <a
+                                              href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
+                                              download
+                                              className="underline"
+                                            >
+                                              {niceFileName(r.file)}
+                                            </a>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleReportDelete(article.id, r.id);
+                                              }}
+                                              className="ml-1 text-red-500"
+                                              title="Удалить отчет"
+                                            >
+                                              ×
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </details>
+                                  ) : null}
+                                  <label
+                                    className="inline-flex items-center cursor-pointer text-red-500 mt-1"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    {niceFileName(r.file)}
-                                  </a>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleReportDelete(article.id, r.id);
-                                    }}
-                                    className="ml-1 text-red-500"
-                                    title="Удалить отчет"
-                                  >
-                                    ×
-                                  </button>
-                                </span>
-                                ))}
-                                <label
-                                  className="inline-flex items-center cursor-pointer text-red-500"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <input
-                                    type="file"
-                                    accept="*"
-                                    className="hidden"
-                                    onChange={e => {
-                                      e.stopPropagation();
-                                      handleReportAdd(article.id, e);
-                                    }}
-                                  />
-                                  <Plus className="w-3 h-3" />
-                                </label>
+                                    <input
+                                      type="file"
+                                      accept="*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        handleReportAdd(article.id, e);
+                                      }}
+                                    />
+                                    <Plus className="w-3 h-3" />
+                                  </label>
                                 </div>
                               </td>
                             )}
