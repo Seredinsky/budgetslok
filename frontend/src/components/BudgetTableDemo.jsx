@@ -373,7 +373,7 @@ const BudgetTableDemo = () => {
       .then(({ data }) => {
         setData(data);
         setSelectedArticles(data.map((it) => it.id));
-        setExpandedArticles(data.map((it) => it.id));
+        setExpandedArticles([]);
       })
       .catch((err) => console.error(err))
       .finally(() => setLoadingItems(false));
@@ -1413,15 +1413,15 @@ const BudgetTableDemo = () => {
                           />
                         </tr>
                         {/* totals row */}
-                        <tr key={`totals-${article.name}`} className="hidden sm:table-row border-t-2 border-gray-400">
+                        <tr key={`totals-${article.name}`} className="hidden sm:table-row">
                           {/* Removed rowSpan from this td */}
-                          <td className="border p-2 bg-teal-50 text-left font-medium w-56 max-w-[14rem]">
+                          <td className="border p-2 text-left font-medium w-56 max-w-[14rem]">
                             Итог
                           </td>
                           {visibleMonths.map((m) => (
                             <td
                               key={m}
-                              className="border p-2 bg-teal-50 font-medium text-center whitespace-pre-line"
+                              className="border p-2 font-medium text-center whitespace-pre-line"
                             >
                               {formatTotalLines(
                                 monthTotals[m].acc,
@@ -1434,9 +1434,9 @@ const BudgetTableDemo = () => {
                         </tr>
                         {/* quarterly totals row */}
                         {showQuarterTotals.some(Boolean) && (
-                          <tr key={`qtotals-${article.name}`} className="hidden sm:table-row border-t-2 border-gray-400">
+                          <tr key={`qtotals-${article.name}`} className="hidden sm:table-row">
                             {/* Removed rowSpan from this td */}
-                            <td className="border p-2 bg-emerald-50 font-medium w-56 max-w-[14rem]">
+                            <td className="border p-2 font-medium w-56 max-w-[14rem]">
                               Квартальный итог
                             </td>
                             {quarterTotals.map((qt, qIdx) => {
@@ -1453,7 +1453,7 @@ const BudgetTableDemo = () => {
                                 <td
                                   key={qIdx}
                                   colSpan={3}
-                                  className="border p-2 bg-emerald-50 font-medium text-center whitespace-pre-line"
+                                  className="border p-2 font-medium text-center whitespace-pre-line"
                                 >
                                   {formatTotalLines(qt.acc, qt.pay, qt.fAcc, qt.fPay)}
                                   {reserveLine && (
@@ -1650,13 +1650,13 @@ const BudgetTableDemo = () => {
                       <>
                         {/* итоговая строка по статье */}
                         <tr key={`totals-${article.name}`} className="hidden sm:table-row border-t-2 border-gray-400">
-                          <td className="border p-2 bg-teal-50 text-left font-medium w-56 max-w-[14rem]">
+                          <td className="border p-2 font-medium text-left w-56 max-w-[14rem]">
                             Итог
                           </td>
                           {visibleMonths.map((m) => (
                             <td
                               key={m}
-                              className="border p-2 bg-teal-50 font-medium text-center whitespace-pre-line"
+                              className="border p-2 font-medium text-center whitespace-pre-line"
                             >
                               {formatTotalLines(
                                 monthTotals[m].acc,
@@ -1670,7 +1670,7 @@ const BudgetTableDemo = () => {
                         {/* строка по кварталам */}
                         {showQuarterTotals.some(Boolean) && (
                           <tr key={`qtotals-${article.name}`} className="hidden sm:table-row border-t-2 border-gray-400">
-                            <td className="border p-2 bg-emerald-50 font-medium w-56 max-w-[14rem]">
+                            <td className="border p-2 font-medium w-56 max-w-[14rem]">
                               Квартальный итог
                             </td>
                             {quarterTotals.map((qt, qIdx) => {
@@ -1687,7 +1687,7 @@ const BudgetTableDemo = () => {
                                 <th
                                   key={qIdx}
                                   colSpan={3}
-                                  className="border p-2 bg-emerald-50 font-medium text-center whitespace-pre-line hidden sm:table-cell"
+                                  className="border p-2 font-medium text-center whitespace-pre-line hidden sm:table-cell"
                                 >
                                   {formatTotalLines(qt.acc, qt.pay, qt.fAcc, qt.fPay)}
                                   {reserveLine && (
