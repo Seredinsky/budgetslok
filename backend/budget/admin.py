@@ -40,75 +40,142 @@ class WorkResource(resources.ModelResource):
     actual_payments_amount = fields.Field(column_name='actual_payments_amount', attribute='actual_payments')
     actual_payments_status = fields.Field(column_name='actual_payments_status', attribute='actual_payments')
 
-    def dehydrate_accruals(self, work):
+    # JSON fields for import
+    accruals = fields.Field(
+        column_name='accruals',
+        attribute='accruals',
+        widget=JsonSplitWidget()
+    )
+    payments = fields.Field(
+        column_name='payments',
+        attribute='payments',
+        widget=JsonSplitWidget()
+    )
+    actual_accruals = fields.Field(
+        column_name='actual_accruals',
+        attribute='actual_accruals',
+        widget=JsonSplitWidget()
+    )
+    actual_payments = fields.Field(
+        column_name='actual_payments',
+        attribute='actual_payments',
+        widget=JsonSplitWidget()
+    )
+
+    def dehydrate_accruals_month(self, work):
         raw = work.accruals
         try:
             data = json.loads(raw) if isinstance(raw, str) else raw or {}
         except JSONDecodeError:
             data = {}
-        if not data:
-            return json.dumps({}, ensure_ascii=False)
-        month = next(iter(data.keys()), None)
-        if not month:
-            return json.dumps({}, ensure_ascii=False)
-        amount = data[month].get('amount', '')
-        status = data[month].get('status', '')
-        return json.dumps({month: {'amount': amount, 'status': status}}, ensure_ascii=False)
+        return next(iter(data.keys()), '')
 
-    def dehydrate_payments(self, work):
+    def dehydrate_accruals_amount(self, work):
+        raw = work.accruals
+        try:
+            data = json.loads(raw) if isinstance(raw, str) else raw or {}
+        except JSONDecodeError:
+            data = {}
+        key = next(iter(data.keys()), None)
+        return data[key].get('amount', '') if key else ''
+
+    def dehydrate_accruals_status(self, work):
+        raw = work.accruals
+        try:
+            data = json.loads(raw) if isinstance(raw, str) else raw or {}
+        except JSONDecodeError:
+            data = {}
+        key = next(iter(data.keys()), None)
+        return data[key].get('status', '') if key else ''
+
+    def dehydrate_payments_month(self, work):
         raw = work.payments
         try:
             data = json.loads(raw) if isinstance(raw, str) else raw or {}
         except JSONDecodeError:
             data = {}
-        if not data:
-            return json.dumps({}, ensure_ascii=False)
-        month = next(iter(data.keys()), None)
-        if not month:
-            return json.dumps({}, ensure_ascii=False)
-        amount = data[month].get('amount', '')
-        status = data[month].get('status', '')
-        return json.dumps({month: {'amount': amount, 'status': status}}, ensure_ascii=False)
+        return next(iter(data.keys()), '')
 
-    def dehydrate_actual_accruals(self, work):
+    def dehydrate_payments_amount(self, work):
+        raw = work.payments
+        try:
+            data = json.loads(raw) if isinstance(raw, str) else raw or {}
+        except JSONDecodeError:
+            data = {}
+        key = next(iter(data.keys()), None)
+        return data[key].get('amount', '') if key else ''
+
+    def dehydrate_payments_status(self, work):
+        raw = work.payments
+        try:
+            data = json.loads(raw) if isinstance(raw, str) else raw or {}
+        except JSONDecodeError:
+            data = {}
+        key = next(iter(data.keys()), None)
+        return data[key].get('status', '') if key else ''
+
+    def dehydrate_actual_accruals_month(self, work):
         raw = work.actual_accruals
         try:
             data = json.loads(raw) if isinstance(raw, str) else raw or {}
         except JSONDecodeError:
             data = {}
-        if not data:
-            return json.dumps({}, ensure_ascii=False)
-        month = next(iter(data.keys()), None)
-        if not month:
-            return json.dumps({}, ensure_ascii=False)
-        amount = data[month].get('amount', '')
-        status = data[month].get('status', '')
-        return json.dumps({month: {'amount': amount, 'status': status}}, ensure_ascii=False)
+        return next(iter(data.keys()), '')
 
-    def dehydrate_actual_payments(self, work):
+    def dehydrate_actual_accruals_amount(self, work):
+        raw = work.actual_accruals
+        try:
+            data = json.loads(raw) if isinstance(raw, str) else raw or {}
+        except JSONDecodeError:
+            data = {}
+        key = next(iter(data.keys()), None)
+        return data[key].get('amount', '') if key else ''
+
+    def dehydrate_actual_accruals_status(self, work):
+        raw = work.actual_accruals
+        try:
+            data = json.loads(raw) if isinstance(raw, str) else raw or {}
+        except JSONDecodeError:
+            data = {}
+        key = next(iter(data.keys()), None)
+        return data[key].get('status', '') if key else ''
+
+    def dehydrate_actual_payments_month(self, work):
         raw = work.actual_payments
         try:
             data = json.loads(raw) if isinstance(raw, str) else raw or {}
         except JSONDecodeError:
             data = {}
-        if not data:
-            return json.dumps({}, ensure_ascii=False)
-        month = next(iter(data.keys()), None)
-        if not month:
-            return json.dumps({}, ensure_ascii=False)
-        amount = data[month].get('amount', '')
-        status = data[month].get('status', '')
-        return json.dumps({month: {'amount': amount, 'status': status}}, ensure_ascii=False)
+        return next(iter(data.keys()), '')
+
+    def dehydrate_actual_payments_amount(self, work):
+        raw = work.actual_payments
+        try:
+            data = json.loads(raw) if isinstance(raw, str) else raw or {}
+        except JSONDecodeError:
+            data = {}
+        key = next(iter(data.keys()), None)
+        return data[key].get('amount', '') if key else ''
+
+    def dehydrate_actual_payments_status(self, work):
+        raw = work.actual_payments
+        try:
+            data = json.loads(raw) if isinstance(raw, str) else raw or {}
+        except JSONDecodeError:
+            data = {}
+        key = next(iter(data.keys()), None)
+        return data[key].get('status', '') if key else ''
 
     def before_import_row(self, row, **kwargs):
         for prefix in ['accruals', 'payments', 'actual_accruals', 'actual_payments']:
             month = row.get(f'{prefix}_month')
+            amount = row.get(f'{prefix}_amount')
+            status = row.get(f'{prefix}_status')
             if month:
-                obj = {month: {
-                    'amount': row.get(f'{prefix}_amount'),
-                    'status': row.get(f'{prefix}_status'),
-                }}
-                row[prefix] = json.dumps(obj, ensure_ascii=False)
+                obj = {month: {'amount': amount, 'status': status}}
+            else:
+                obj = {}
+            row[prefix] = json.dumps(obj, ensure_ascii=False)
 
     class Meta:
         model = Work
@@ -119,6 +186,10 @@ class WorkResource(resources.ModelResource):
             'certification', 'work_type', 'product_name',
             'responsible_slok', 'responsible_dpm',
             'certificate_number', 'certification_body',
+            'accruals_month', 'accruals_amount', 'accruals_status',
+            'payments_month', 'payments_amount', 'payments_status',
+            'actual_accruals_month', 'actual_accruals_amount', 'actual_accruals_status',
+            'actual_payments_month', 'actual_payments_amount', 'actual_payments_status',
             'accruals', 'payments', 'actual_accruals', 'actual_payments',
             'year', 'responsible', 'vat_rate', 'feasibility',
         )
