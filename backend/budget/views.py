@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
 
-from .models import BudgetItem, Work, Material, QuarterReserve, PaymentDetail, ArticleReport
+from .models import BudgetItem, Work, Material, QuarterReserve, PaymentDetail
 from .serializers import (
     BudgetItemSerializer,
     WorkSerializer,
@@ -12,7 +12,6 @@ from .serializers import (
     ReserveSerializer,
     UserLightSerializer,
     PaymentDetailSerializer,
-    ArticleReportSerializer,
 )
 
 from rest_framework.decorators import action
@@ -97,7 +96,7 @@ class BudgetItemViewSet(viewsets.ModelViewSet):
             queryset=Work.objects.with_details().prefetch_related('materials'),
             to_attr='detailed_works'
         )
-    ).prefetch_related('reports')
+    ).prefetch_related('materials')
     serializer_class = BudgetItemSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -197,18 +196,6 @@ class ReserveViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(reserve).data)
 
 
-# ---- Article Reports -------------------------------------------------
-class ArticleReportViewSet(viewsets.ModelViewSet):
-    """CRUD для файлов-отчетов статей бюджета"""
-    queryset = ArticleReport.objects.select_related('item')
-    serializer_class = ArticleReportSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    parser_classes = (parsers.MultiPartParser, parsers.FormParser)
-
-    def perform_create(self, serializer):
-        item_id = self.request.data.get('item')
-        item = get_object_or_404(BudgetItem, pk=item_id)
-        serializer.save(item=item)
 
 # ---- Users -----------------------------------------------------------
 User = get_user_model()
