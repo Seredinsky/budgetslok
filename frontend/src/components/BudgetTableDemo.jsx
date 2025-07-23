@@ -1497,8 +1497,6 @@ const BudgetTableDemo = () => {
                                 <span key={r.id} className="inline-flex items-center mr-1">
                                   <a
                                     href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
                                     download
                                     className="underline text-[10px] break-words block"
                                   >
@@ -1657,8 +1655,6 @@ const BudgetTableDemo = () => {
                                 <span key={r.id} className="inline-flex items-center mr-1">
                                   <a
                                     href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
                                     download
                                     className="underline text-[10px] break-words block"
                                   >
