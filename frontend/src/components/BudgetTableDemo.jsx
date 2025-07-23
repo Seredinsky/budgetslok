@@ -157,6 +157,7 @@ const BudgetTableDemo = () => {
 
   // --- Sorting state for works ---
   const [sortByDate, setSortByDate] = useState(false);
+  const [sortBySum, setSortBySum] = useState(null); // "asc" | "desc" | null
 
   // суммарный бюджет по выбранным фильтрам, раздельно для начислений и оплат
   const globalTotals = useMemo(() => {
@@ -1252,8 +1253,33 @@ const BudgetTableDemo = () => {
             )}
             onClick={() => setSortByDate(!sortByDate)}
           >
-            {sortByDate ? "Сортировать по срокам" : "Сортировать по срокам"}
+            {sortByDate ? "Сортировка по срокам" : "Сортировка по срокам"}
           </button>
+        </div>
+        <div className="inline-flex rounded overflow-hidden border ml-2">
+          <span className="px-2 py-1 text-sm bg-gray-50 text-gray-700 flex items-center">
+            Сумма
+          </span>
+          {[
+            { value: "asc", icon: <ChevronUp className="w-4 h-4" />, label: "↑" },
+            { value: "desc", icon: <ChevronDown className="w-4 h-4" />, label: "↓" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={clsx(
+                "px-2 py-1 flex items-center justify-center",
+                sortBySum === opt.value
+                  ? `${primaryColorClass} text-white`
+                  : "bg-white hover:bg-[rgba(237,28,36,0.1)]"
+              )}
+              onClick={() =>
+                setSortBySum(sortBySum === opt.value ? null : opt.value)
+              }
+            >
+              {opt.icon}
+            </button>
+          ))}
         </div>
         {activeFilterChips.length > 0 && (
           <div className="flex flex-wrap gap-2 ml-auto">
@@ -1310,9 +1336,33 @@ const BudgetTableDemo = () => {
             return Infinity;
           };
           // Apply sorting if enabled
-          const worksList = sortByDate
+          let tempList = sortByDate
             ? [...filteredWorks].sort((a, b) => getWorkDateOrder(a) - getWorkDateOrder(b))
-            : filteredWorks;
+            : [...filteredWorks];
+          if (sortBySum) {
+            tempList.sort((a, b) => {
+              const sumA = visibleMonths.reduce(
+                (s, m) =>
+                  s +
+                  (getAmt(a.accruals?.[m]) || 0) +
+                  (getAmt(a.payments?.[m]) || 0) +
+                  (getAmt(a.actual_accruals?.[m]) || 0) +
+                  (getAmt(a.actual_payments?.[m]) || 0),
+                0
+              );
+              const sumB = visibleMonths.reduce(
+                (s, m) =>
+                  s +
+                  (getAmt(b.accruals?.[m]) || 0) +
+                  (getAmt(b.payments?.[m]) || 0) +
+                  (getAmt(b.actual_accruals?.[m]) || 0) +
+                  (getAmt(b.actual_payments?.[m]) || 0),
+                0
+              );
+              return sortBySum === "asc" ? sumA - sumB : sumB - sumA;
+            });
+          }
+          const worksList = tempList.filter(() => true);
           const { monthTotals, quarterTotals } = calcTotals({
             ...article,
             works: worksList,
