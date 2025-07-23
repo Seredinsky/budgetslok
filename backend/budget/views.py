@@ -97,7 +97,7 @@ class BudgetItemViewSet(viewsets.ModelViewSet):
             queryset=Work.objects.with_details().prefetch_related('materials'),
             to_attr='detailed_works'
         )
-    )
+    ).prefetch_related('reports')
     serializer_class = BudgetItemSerializer
     permission_classes = [permissions.IsAuthenticated]
 
