@@ -1507,6 +1507,7 @@ const BudgetTableDemo = () => {
                                           href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
                                           download
                                           className="underline"
+                                          onClick={(e) => e.stopPropagation()}
                                         >
                                           {niceFileName(r.file)}
                                         </a>
@@ -1676,6 +1677,7 @@ const BudgetTableDemo = () => {
                                               href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
                                               download
                                               className="underline"
+                                              onClick={(e) => e.stopPropagation()}
                                             >
                                               {niceFileName(r.file)}
                                             </a>
