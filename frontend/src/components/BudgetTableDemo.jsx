@@ -1499,6 +1499,7 @@ const BudgetTableDemo = () => {
                                     href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
+                                    download
                                     className="underline text-[10px] break-words block"
                                   >
                                     {niceFileName(r.file)}
@@ -1653,26 +1654,27 @@ const BudgetTableDemo = () => {
                                 <div className="mt-2 text-xs">
                                 <span className="font-medium">Отчеты: </span>
                                 {(article.reports || []).map(r => (
-                                  <span key={r.id} className="inline-flex items-center mr-1">
-                                    <a
-                                      href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="underline text-[10px] break-words block"
-                                    >
-                                      {niceFileName(r.file)}
-                                    </a>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleReportDelete(article.id, r.id);
-                                      }}
-                                      className="ml-1 text-red-500"
-                                      title="Удалить отчет"
-                                    >
-                                      ×
-                                    </button>
-                                  </span>
+                                <span key={r.id} className="inline-flex items-center mr-1">
+                                  <a
+                                    href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    download
+                                    className="underline text-[10px] break-words block"
+                                  >
+                                    {niceFileName(r.file)}
+                                  </a>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleReportDelete(article.id, r.id);
+                                    }}
+                                    className="ml-1 text-red-500"
+                                    title="Удалить отчет"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
                                 ))}
                                 <label
                                   className="inline-flex items-center cursor-pointer text-red-500"
