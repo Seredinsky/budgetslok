@@ -1496,10 +1496,10 @@ const BudgetTableDemo = () => {
                               {(article.reports || []).map(r => (
                                 <span key={r.id} className="inline-flex items-center mr-1">
                                   <a
-                                    href={`${BACKEND_ORIGIN}${r.file}`}
+                                    href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="underline"
+                                    className="underline text-[10px] break-words block"
                                   >
                                     {niceFileName(r.file)}
                                   </a>
@@ -1651,44 +1651,44 @@ const BudgetTableDemo = () => {
                                 <span className="mr-1">{expanded ? "▼" : "►"}</span>
                                 {article.name}
                                 <div className="mt-2 text-xs">
-                                  <span className="font-medium">Отчеты: </span>
-                                  {(article.reports || []).map(r => (
-                                    <span key={r.id} className="inline-flex items-center mr-1">
-                                      <a
-                                        href={`${BACKEND_ORIGIN}${r.file}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="underline"
-                                      >
-                                        {niceFileName(r.file)}
-                                      </a>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleReportDelete(article.id, r.id);
-                                        }}
-                                        className="ml-1 text-red-500"
-                                        title="Удалить отчет"
-                                      >
-                                        ×
-                                      </button>
-                                    </span>
-                                  ))}
-                                  <label
-                                    className="inline-flex items-center cursor-pointer text-red-500"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <input
-                                      type="file"
-                                      accept="*"
-                                      className="hidden"
-                                      onChange={e => {
+                                <span className="font-medium">Отчеты: </span>
+                                {(article.reports || []).map(r => (
+                                  <span key={r.id} className="inline-flex items-center mr-1">
+                                    <a
+                                      href={r.file.startsWith("http") ? r.file : `${BACKEND_ORIGIN}${r.file}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="underline text-[10px] break-words block"
+                                    >
+                                      {niceFileName(r.file)}
+                                    </a>
+                                    <button
+                                      onClick={(e) => {
                                         e.stopPropagation();
-                                        handleReportAdd(article.id, e);
+                                        handleReportDelete(article.id, r.id);
                                       }}
-                                    />
-                                    <Plus className="w-3 h-3" />
-                                  </label>
+                                      className="ml-1 text-red-500"
+                                      title="Удалить отчет"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                ))}
+                                <label
+                                  className="inline-flex items-center cursor-pointer text-red-500"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <input
+                                    type="file"
+                                    accept="*"
+                                    className="hidden"
+                                    onChange={e => {
+                                      e.stopPropagation();
+                                      handleReportAdd(article.id, e);
+                                    }}
+                                  />
+                                  <Plus className="w-3 h-3" />
+                                </label>
                                 </div>
                               </td>
                             )}
