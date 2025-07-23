@@ -28,6 +28,7 @@ COPY --from=react-build /frontend/dist /app/static/react
 # 3. Собираем статику
 RUN python manage.py collectstatic --noinput
 
+
 EXPOSE 8000
 CMD ["gunicorn", "-b", "0.0.0.0:8000", "config.wsgi:application", \
-     "--workers=3", "--max-requests=500", "--timeout=60"]
+     "--workers=5", "--max-requests=1000", "--timeout=60"]
