@@ -1019,7 +1019,7 @@ const BudgetTableDemo = () => {
       {/* drawer */}
       {settingsOpen && (
         <div
-          className="fixed inset-y-0 left-0 w-80 bg-gray-50 border-r shadow-lg z-50 flex flex-col p-4 overflow-auto"
+          className="fixed inset-y-0 left-0 w-70 bg-gray-50 border-r shadow-lg z-50 flex flex-col p-4 overflow-auto"
         >
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-semibold text-lg">Настройки</h2>
