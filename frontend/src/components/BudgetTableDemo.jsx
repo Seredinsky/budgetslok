@@ -1018,7 +1018,9 @@ const BudgetTableDemo = () => {
 
       {/* drawer */}
       {settingsOpen && (
-        <div className="fixed inset-y-0 left-0 w-64 bg-gray-50 border-r shadow-lg z-50 flex flex-col p-4 overflow-auto">
+        <div
+          className="fixed inset-y-0 left-0 w-80 bg-gray-50 border-r shadow-lg z-50 flex flex-col p-4 overflow-auto"
+        >
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-semibold text-lg">Настройки</h2>
             <button
@@ -1029,19 +1031,33 @@ const BudgetTableDemo = () => {
             </button>
           </div>
 
-          <details className="mb-4 border rounded">
+          <details className="mb-4 border rounded p-1">
             <summary className="cursor-pointer font-semibold text-lg w-full text-left px-2 py-1 bg-gray-100 border-b hover:bg-gray-200">
               Статьи
             </summary>
+            <div className="px-1 py-1 border-b flex items-center gap-1">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={selectedArticles.length === data.length}
+                onChange={(e) =>
+                  e.target.checked
+                    ? setSelectedArticles(data.map((a) => a.id))
+                    : setSelectedArticles([])
+                }
+                style={{ accentColor: "rgba(237,28,36,0.8)" }}
+              />
+              <span className="text-sm">Выбрать все</span>
+            </div>
             {Array.from(new Set(data.map((a) => a.group.code))).map((code) => {
               const items = data
                 .filter((a) => a.group.code === code)
                 .sort((a, b) => a.position - b.position);
               const groupName = items[0]?.group.name;
               return (
-                <div key={code} className="mb-4 w-full">
+                <div key={code} className="mb-1 w-full">
                   <h4 className="font-medium mb-1">{groupName}</h4>
-                  <div className="space-y-2 text-sm text-left">
+                  <div className="space-y-1 text-sm text-left">
                     {items.map((art) => (
                       <label key={art.id} className="flex items-center gap-2 w-full">
                         <input
