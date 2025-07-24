@@ -158,6 +158,7 @@ const BudgetTableDemo = () => {
 
   // --- Sorting state for works ---
   const [sortByDate, setSortByDate] = useState(false);
+  const [sortByAlpha, setSortByAlpha] = useState(false);
   const [sortBySum, setSortBySum] = useState(null); // "asc" | "desc" | null
 
   // суммарный бюджет по выбранным фильтрам, раздельно для начислений и оплат
@@ -1293,6 +1294,20 @@ const BudgetTableDemo = () => {
           </button>
         </div>
         <div className="inline-flex rounded overflow-hidden border ml-2">
+          <button
+            type="button"
+            className={clsx(
+              "px-2 py-1 text-sm",
+              sortByAlpha
+                ? `${primaryColorClass} text-white`
+                : "bg-white hover:bg-[rgba(237,28,36,0.1)]"
+            )}
+            onClick={() => setSortByAlpha(!sortByAlpha)}
+          >
+            {sortByAlpha ? "А–Я" : "А–Я"}
+          </button>
+        </div>
+        <div className="inline-flex rounded overflow-hidden border ml-2">
           <span className="px-2 py-1 text-sm bg-gray-50 text-gray-700 flex items-center">
             Сумма
           </span>
@@ -1397,6 +1412,9 @@ const BudgetTableDemo = () => {
               );
               return sortBySum === "asc" ? sumA - sumB : sumB - sumA;
             });
+          }
+          if (sortByAlpha) {
+            tempList.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
           }
           const worksList = tempList.filter(() => true);
           const { monthTotals, quarterTotals } = calcTotals({
