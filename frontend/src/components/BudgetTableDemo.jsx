@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -989,6 +989,8 @@ const BudgetTableDemo = () => {
   };
 
   // ──────────── Render ────────────
+  // Ref for sticky filters container
+  const filtersRef = useRef(null);
   const anyLoading = loadingItems || loadingReserves || loadingUsers;
   if (anyLoading) {
     return (
@@ -1131,18 +1133,6 @@ const BudgetTableDemo = () => {
 
       {/* main content */}
       <div className="w-full px-4 py-4 relative">
-        {/* hamburger button */}
-        <button
-          type="button"
-          className="absolute top-4 left-4 z-40 p-2 rounded border bg-white shadow-sm"
-          onClick={() => setSettingsOpen(true)}
-        >
-          <span className="sr-only">Открыть меню</span>
-          {/* simple icon */}
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M3 6h14M3 10h14M3 14h14" stroke="#333" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-        </button>
         <div className="mb-4 relative flex justify-center items-center w-full pl-16 pr-20">
           <h1 className="text-2xl font-bold text-center">
             Бюджет Службы обеспечения качества
@@ -1246,6 +1236,7 @@ const BudgetTableDemo = () => {
           </div>
 
           {/* кнопка "Новая работа" создаёт работу в первую выбранную статью */}
+          {
           <Button
             className={clsx(primaryColorClass, "text-white")}
             disabled={selectedArticles.length === 0}
@@ -1257,10 +1248,24 @@ const BudgetTableDemo = () => {
           >
             + Новая работа
           </Button>
+          }
         </div>
 
 
-      <div className="sticky top-0 bg-white z-20 mb-4 flex flex-row flex-wrap items-center gap-2 sm:gap-4">
+      <div
+        ref={filtersRef}
+        className="sticky top-0 bg-white z-20 mb-3 flex flex-row flex-wrap items-center gap-2"
+      >
+        <button
+          type="button"
+          className="px-2 py-1 rounded border bg-white shadow-sm mr-2"
+          onClick={() => setSettingsOpen(true)}
+        >
+          <span className="sr-only">Открыть меню</span>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M3 6h14M3 10h14M3 14h14" stroke="#333" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </button>
         <div className="inline-flex rounded overflow-hidden border">
           {["acc", "pay", "both"].map((m) => (
             <button
