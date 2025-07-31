@@ -1751,7 +1751,11 @@ const BudgetTableDemo = () => {
                                 >
                                   <div className={clsx("flex flex-col items-end leading-tight", statusText && "italic text-gray-500")}>
                                     {renderCell(dispPlanAcc, dispPlanPay, factAcc, factPay)}
-                                    {statusText.includes('Корр.') ? (
+                                    {statusText.includes('Отмена') ? (
+                                      <span className="inline-block text-xs italic text-red-600 bg-red-100 px-1 rounded mt-1">
+                                        {statusText}
+                                      </span>
+                                    ) : statusText.includes('Корр.') ? (
                                       <span className="inline-block text-xs italic text-blue-600 bg-blue-100 px-1 rounded mt-1">
                                         {statusText}
                                       </span>
